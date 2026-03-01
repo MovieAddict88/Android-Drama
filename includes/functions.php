@@ -41,8 +41,58 @@ function scrape_dramabox() {
     // Attempt to parse JSON from __NEXT_DATA__ for more accurate info
     if (preg_match('/<script id="__NEXT_DATA__" type="application\/json">(.*?)<\/script>/', $html, $scriptMatches)) {
         $jsonData = json_decode($scriptMatches[1], true);
-        if (isset($jsonData['props']['pageProps']['initialState']['home']['homeData'])) {
-            $homeData = $jsonData['props']['pageProps']['initialState']['home']['homeData'];
+        $pageProps = $jsonData['props']['pageProps'] ?? [];
+
+        // Check for bigList (Featured/Hero)
+        if (isset($pageProps['bigList']) && is_array($pageProps['bigList'])) {
+            $featuredItems = [];
+            foreach ($pageProps['bigList'] as $item) {
+                if (isset($item['bookId'])) {
+                    $featuredItems[] = [
+                        'bookId' => $item['bookId'],
+                        'title' => $item['bookName'] ?? $item['bookNameEn'] ?? 'Unknown',
+                        'slug' => $item['replacedBookName'] ?? '',
+                        'cover' => $item['cover'] ?? '',
+                        'description' => $item['introduction'] ?? ''
+                    ];
+                }
+            }
+            if (!empty($featuredItems)) {
+                $categories[] = [
+                    'name' => 'Featured',
+                    'items' => $featuredItems
+                ];
+            }
+        }
+
+        // Check for smallData (Categories)
+        if (isset($pageProps['smallData']) && is_array($pageProps['smallData'])) {
+            foreach ($pageProps['smallData'] as $section) {
+                if (isset($section['list']) && is_array($section['list'])) {
+                    $sectionItems = [];
+                    foreach ($section['list'] as $item) {
+                        if (isset($item['bookId'])) {
+                            $sectionItems[] = [
+                                'bookId' => $item['bookId'],
+                                'title' => $item['bookName'] ?? $item['bookNameEn'] ?? 'Unknown',
+                                'slug' => $item['replacedBookName'] ?? '',
+                                'cover' => $item['cover'] ?? ''
+                            ];
+                        }
+                    }
+                    if (!empty($sectionItems)) {
+                        $categories[] = [
+                            'name' => $section['moduleName'] ?? 'Recommended',
+                            'items' => $sectionItems
+                        ];
+                    }
+                }
+            }
+        }
+
+        // Check for initialState fallback (legacy or different structure)
+        if (empty($categories) && isset($pageProps['initialState']['home']['homeData'])) {
+            $homeData = $pageProps['initialState']['home']['homeData'];
             foreach ($homeData as $section) {
                 if (isset($section['list']) && is_array($section['list'])) {
                     $sectionItems = [];
@@ -107,8 +157,8 @@ function scrape_dramabox() {
 /**
  * Search DramaBox via Sansekai API
  */
-function search_dramabox($keyword) {
-    $apiUrl = "https://api.sansekai.my.id/api/dramabox/search?query=" . urlencode($keyword);
+function search_dramabox($keyword, $page = 1) {
+    $apiUrl = "https://api.sansekai.my.id/api/dramabox/search?query=" . urlencode($keyword) . "&page=" . (int)$page;
     $json = fetch_url($apiUrl);
     if (!$json) return ['error' => 'Failed to fetch search results.'];
 

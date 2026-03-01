@@ -4,11 +4,12 @@ require_once '../includes/functions.php';
 check_admin_login();
 
 $search_query = $_GET['search'] ?? '';
+$page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 $search_results = [];
 $categories = [];
 
 if ($search_query) {
-    $search_results = search_dramabox($search_query);
+    $search_results = search_dramabox($search_query, $page);
 } else {
     $categories = scrape_dramabox();
 }
@@ -256,6 +257,27 @@ $existing_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
                                     </div>
                                 </div>
                             <?php endforeach; ?>
+                        </div>
+
+                        <!-- Pagination -->
+                        <div class="d-flex justify-content-center mt-5">
+                            <nav aria-label="Search results pagination">
+                                <ul class="pagination pagination-lg">
+                                    <li class="page-item <?php echo ($page <= 1) ? 'disabled' : ''; ?>">
+                                        <a class="page-link bg-dark border-secondary text-white" href="?search=<?php echo urlencode($search_query); ?>&page=<?php echo $page - 1; ?>" aria-label="Previous">
+                                            <span aria-hidden="true">&laquo; Previous</span>
+                                        </a>
+                                    </li>
+                                    <li class="page-item active">
+                                        <span class="page-link bg-primary border-primary"><?php echo $page; ?></span>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link bg-dark border-secondary text-white" href="?search=<?php echo urlencode($search_query); ?>&page=<?php echo $page + 1; ?>" aria-label="Next">
+                                            <span aria-hidden="true">Next &raquo;</span>
+                                        </a>
+                                    </li>
+                                </ul>
+                            </nav>
                         </div>
                     <?php endif; ?>
                 </div>
