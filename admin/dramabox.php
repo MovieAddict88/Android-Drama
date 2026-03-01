@@ -97,26 +97,14 @@ $existing_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
             background-color: var(--primary-color);
             border-radius: 2px;
         }
-        .horizontal-slider {
-            display: flex;
-            overflow-x: auto;
-            scroll-behavior: smooth;
-            padding: 10px 15px 25px;
-            gap: 18px;
-            -ms-overflow-style: none;  /* IE and Edge */
-            scrollbar-width: none;  /* Firefox */
-        }
-        .horizontal-slider::-webkit-scrollbar {
-            display: none; /* Chrome, Safari, Opera */
-        }
         .drama-card {
-            min-width: 170px;
-            width: 170px;
-            flex: 0 0 auto;
             transition: transform 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
             cursor: pointer;
             border: none;
             background: transparent;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
         }
         .drama-card:hover {
             transform: scale(1.06);
@@ -251,64 +239,33 @@ $existing_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
             </div>
         </div>
     <?php else: ?>
-        <?php
-        $heroDrama = null;
-        if (!empty($categories)) {
-            foreach ($categories as $cat) {
-                if (!empty($cat['items'])) {
-                    $heroDrama = $cat['items'][0];
-                    break;
-                }
-            }
-        }
-        ?>
-
-        <?php if ($heroDrama): ?>
-        <section class="hero-section" style="background-image: url('<?php echo $heroDrama['cover']; ?>');">
-            <div class="hero-overlay"></div>
-            <div class="container-fluid px-lg-5">
-                <div class="hero-content">
-                    <h1 class="hero-title"><?php echo $heroDrama['title']; ?></h1>
-                    <p class="hero-desc">Discover the most trending short drama from DramaBox. High-speed storytelling with immersive vertical video experience.</p>
-                    <div class="d-flex gap-3">
-                        <?php if (in_array($heroDrama['bookId'], $existing_ids)): ?>
-                            <button class="btn btn-lg px-5 py-3 rounded-pill fw-bold" style="background-color: #2ecc71; color: #fff; border: none;" disabled>
-                                <i class="bi bi-check-circle-fill me-2"></i> GENERATED
-                            </button>
-                        <?php else: ?>
-                            <a href="generate.php?bookId=<?php echo $heroDrama['bookId']; ?>&title=<?php echo urlencode($heroDrama['title']); ?>&cover=<?php echo urlencode($heroDrama['cover']); ?>" class="btn btn-lg px-5 py-3 rounded-pill fw-bold" style="background-color: var(--primary-color); color: #fff; border: none;">
-                                <i class="bi bi-magic me-2"></i> GENERATE CONTENT
-                            </a>
-                        <?php endif; ?>
-                    </div>
-                </div>
-            </div>
-        </section>
-        <?php endif; ?>
-
-        <main class="pb-5">
+        <main class="py-4">
             <?php foreach ($categories as $category): ?>
-                <div class="section-container">
+                <div class="section-container mb-5">
                     <div class="section-header px-lg-5">
                         <h2 class="section-title"><?php echo $category['name']; ?></h2>
                         <span class="text-muted small"><?php echo count($category['items']); ?> Items</span>
                     </div>
-                    <div class="horizontal-slider px-lg-5">
-                        <?php foreach ($category['items'] as $item): ?>
-                            <div class="drama-card">
-                                <div class="card-img-container shadow">
-                                    <img src="<?php echo $item['cover']; ?>" alt="<?php echo $item['title']; ?>" loading="lazy" onerror="this.src='https://via.placeholder.com/240x400?text=No+Image'">
-                                    <div class="card-overlay">
-                                        <?php if (in_array($item['bookId'], $existing_ids)): ?>
-                                            <span class="generate-btn btn-generated">DONE</span>
-                                        <?php else: ?>
-                                            <a href="generate.php?bookId=<?php echo $item['bookId']; ?>&title=<?php echo urlencode($item['title']); ?>&cover=<?php echo urlencode($item['cover']); ?>" class="generate-btn">GENERATE</a>
-                                        <?php endif; ?>
+                    <div class="container-fluid px-lg-5">
+                        <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6 g-3 g-lg-4">
+                            <?php foreach ($category['items'] as $item): ?>
+                                <div class="col">
+                                    <div class="drama-card">
+                                        <div class="card-img-container shadow">
+                                            <img src="<?php echo $item['cover']; ?>" alt="<?php echo $item['title']; ?>" loading="lazy" onerror="this.src='https://via.placeholder.com/240x400?text=No+Image'">
+                                            <div class="card-overlay">
+                                                <?php if (in_array($item['bookId'], $existing_ids)): ?>
+                                                    <span class="generate-btn btn-generated">DONE</span>
+                                                <?php else: ?>
+                                                    <a href="generate.php?bookId=<?php echo $item['bookId']; ?>&title=<?php echo urlencode($item['title']); ?>&cover=<?php echo urlencode($item['cover']); ?>" class="generate-btn">GENERATE</a>
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
+                                        <div class="card-title mt-2"><?php echo $item['title']; ?></div>
                                     </div>
                                 </div>
-                                <div class="card-title"><?php echo $item['title']; ?></div>
-                            </div>
-                        <?php endforeach; ?>
+                            <?php endforeach; ?>
+                        </div>
                     </div>
                 </div>
             <?php endforeach; ?>
