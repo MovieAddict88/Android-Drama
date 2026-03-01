@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Shorty</string>
+    <string name="nav_home">Home</string>
+    <string name="nav_search">Search</string>
+    <string name="trending">Trending</string>
+    <string name="latest">Latest</string>
+    <string name="episodes">Episodes</string>
+    <string name="retry">Retry</string>
+</resources>
