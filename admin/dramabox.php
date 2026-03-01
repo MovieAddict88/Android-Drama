@@ -3,7 +3,7 @@ require_once '../includes/db.php';
 require_once '../includes/functions.php';
 check_admin_login();
 
-$dramas = scrape_dramabox();
+$categories = scrape_dramabox();
 
 // Check which ones are already generated
 $stmt = $pdo->query("SELECT book_id FROM dramas");
@@ -15,94 +15,306 @@ $existing_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DramaBox Content - Drama Admin</title>
+    <title>DramaBox Content - Admin</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <style>
-        .drama-card {
-            transition: 0.3s;
-            border: none;
+        :root {
+            --primary-color: #ff0055;
+            --bg-color: #0b0b0b;
+            --card-bg: #1a1a1a;
+            --text-main: #ffffff;
+            --text-muted: #aaaaaa;
+        }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        .navbar {
+            background-color: rgba(0,0,0,0.8) !important;
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .hero-section {
+            position: relative;
+            height: 55vh;
+            background-size: cover;
+            background-position: center 20%;
+            display: flex;
+            align-items: flex-end;
+            padding-bottom: 60px;
+            margin-top: -56px; /* Offset navbar */
+        }
+        .hero-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(0deg, var(--bg-color) 5%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.7) 100%);
+        }
+        .hero-content {
+            position: relative;
+            z-index: 2;
+            max-width: 800px;
+        }
+        .hero-title {
+            font-size: 3.5rem;
+            font-weight: 900;
+            margin-bottom: 15px;
+            text-shadow: 2px 2px 10px rgba(0,0,0,0.5);
+        }
+        .hero-desc {
+            font-size: 1.1rem;
+            color: #ddd;
+            margin-bottom: 25px;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
             overflow: hidden;
         }
-        .drama-card:hover {
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 40px 0 15px;
+            padding: 0 15px;
         }
-        .card-img-top {
-            height: 300px;
+        .section-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            position: relative;
+            padding-left: 15px;
+        }
+        .section-title::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 15%;
+            height: 70%;
+            width: 4px;
+            background-color: var(--primary-color);
+            border-radius: 2px;
+        }
+        .horizontal-slider {
+            display: flex;
+            overflow-x: auto;
+            scroll-behavior: smooth;
+            padding: 10px 15px 25px;
+            gap: 18px;
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+        .horizontal-slider::-webkit-scrollbar {
+            display: none; /* Chrome, Safari, Opera */
+        }
+        .drama-card {
+            min-width: 170px;
+            width: 170px;
+            flex: 0 0 auto;
+            transition: transform 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+            cursor: pointer;
+            border: none;
+            background: transparent;
+        }
+        .drama-card:hover {
+            transform: scale(1.06);
+            z-index: 5;
+        }
+        .card-img-container {
+            position: relative;
+            border-radius: 12px;
+            overflow: hidden;
+            aspect-ratio: 2/3;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+        }
+        .card-img-container img {
+            width: 100%;
+            height: 100%;
             object-fit: cover;
+        }
+        .card-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.6);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.3s;
+            backdrop-filter: blur(2px);
+        }
+        .drama-card:hover .card-overlay {
+            opacity: 1;
+        }
+        .card-title {
+            margin-top: 12px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: #fff;
+            padding: 0 2px;
+        }
+        .generate-btn {
+            background-color: var(--primary-color);
+            color: #fff;
+            border: none;
+            padding: 7px 18px;
+            border-radius: 25px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-decoration: none;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 10px rgba(255, 0, 85, 0.3);
+        }
+        .generate-btn:hover {
+            background-color: #e6004d;
+            color: #fff;
+            transform: translateY(-2px);
+        }
+        .btn-generated {
+            background-color: #2ecc71;
+            box-shadow: 0 4px 10px rgba(46, 204, 113, 0.3);
+            cursor: default;
+        }
+        .btn-generated:hover {
+            transform: none;
+        }
+        .manual-form-container {
+            padding: 20px;
+            background: var(--card-bg);
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+        .alert-custom {
+            background-color: rgba(255, 0, 85, 0.1);
+            border: 1px solid var(--primary-color);
+            color: #fff;
+            border-radius: 12px;
         }
     </style>
 </head>
-<body class="bg-light">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container">
-            <a class="navbar-brand" href="index.php">Drama Admin</a>
-            <div class="collapse navbar-collapse">
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
+        <div class="container-fluid px-lg-5">
+            <a class="navbar-brand fw-bold" href="index.php"><span style="color: var(--primary-color);">DRAMA</span>ADMIN</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item"><a class="nav-link" href="index.php">Dashboard</a></li>
-                    <li class="nav-item"><a class="nav-link active" href="dramabox.php">DramaBox</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="dramabox.php">Browse DramaBox</a></li>
                 </ul>
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item"><a class="nav-link" href="logout.php"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
-                </ul>
+                <div class="d-flex align-items-center">
+                    <form class="d-flex me-3" action="generate.php" method="GET">
+                        <input type="text" name="bookId" class="form-control form-control-sm bg-dark border-secondary text-white rounded-pill px-3" placeholder="Add by Book ID..." required>
+                        <button type="submit" class="btn btn-sm btn-outline-light ms-2 rounded-pill">Add</button>
+                    </form>
+                    <a href="logout.php" class="text-white text-decoration-none small opacity-75 hover-opacity-100"><i class="bi bi-box-arrow-right fs-5"></i></a>
+                </div>
             </div>
         </div>
     </nav>
 
-    <div class="container py-4">
-        <div class="row align-items-center mb-4">
-            <div class="col-md-6">
-                <h3>DramaBox Content</h3>
-                <div class="text-muted">Scraped from dramaboxdb.com</div>
+    <?php if (isset($categories['error'])): ?>
+        <div class="container mt-5">
+            <div class="alert alert-custom p-4 shadow">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-exclamation-triangle-fill me-3 fs-2" style="color: var(--primary-color);"></i>
+                    <div>
+                        <h5 class="mb-1">Scraping limit reached or structure changed</h5>
+                        <p class="mb-0 opacity-75"><?php echo htmlspecialchars($categories['error']); ?></p>
+                    </div>
+                </div>
             </div>
-            <div class="col-md-6 text-md-end mt-3 mt-md-0">
-                <form class="row g-2 justify-content-md-end" action="generate.php" method="GET">
-                    <div class="col-auto">
-                        <input type="text" name="bookId" class="form-control form-control-sm" placeholder="Enter Book ID manually..." required>
+
+            <div class="manual-form-container mt-4">
+                <h4>Manual Content Generation</h4>
+                <p class="text-muted">Enter the DramaBox Book ID to fetch data directly via API.</p>
+                <form action="generate.php" method="GET" class="row g-3">
+                    <div class="col-md-6">
+                        <input type="text" name="bookId" class="form-control bg-dark border-secondary text-white" placeholder="Example: 41000000057" required>
                     </div>
                     <div class="col-auto">
-                        <button type="submit" class="btn btn-sm btn-dark">Generate</button>
+                        <button type="submit" class="btn btn-primary px-4" style="background-color: var(--primary-color); border: none;">Generate Content</button>
                     </div>
                 </form>
             </div>
         </div>
+    <?php else: ?>
+        <?php
+        $heroDrama = null;
+        if (!empty($categories)) {
+            foreach ($categories as $cat) {
+                if (!empty($cat['items'])) {
+                    $heroDrama = $cat['items'][0];
+                    break;
+                }
+            }
+        }
+        ?>
 
-        <?php if (isset($dramas['error'])): ?>
-            <div class="alert alert-info border-0 shadow-sm">
-                <div class="d-flex align-items-center">
-                    <i class="bi bi-info-circle-fill me-3 h4 mb-0 text-primary"></i>
-                    <div>
-                        <strong>Scraping failed:</strong> <?php echo htmlspecialchars($dramas['error']); ?>
-                        <br><small>This usually happens if the target site blocks requests or its structure changed. You can still add dramas manually above using their Book ID.</small>
+        <?php if ($heroDrama): ?>
+        <section class="hero-section" style="background-image: url('<?php echo $heroDrama['cover']; ?>');">
+            <div class="hero-overlay"></div>
+            <div class="container-fluid px-lg-5">
+                <div class="hero-content">
+                    <h1 class="hero-title"><?php echo $heroDrama['title']; ?></h1>
+                    <p class="hero-desc">Discover the most trending short drama from DramaBox. High-speed storytelling with immersive vertical video experience.</p>
+                    <div class="d-flex gap-3">
+                        <?php if (in_array($heroDrama['bookId'], $existing_ids)): ?>
+                            <button class="btn btn-lg px-5 py-3 rounded-pill fw-bold" style="background-color: #2ecc71; color: #fff; border: none;" disabled>
+                                <i class="bi bi-check-circle-fill me-2"></i> GENERATED
+                            </button>
+                        <?php else: ?>
+                            <a href="generate.php?bookId=<?php echo $heroDrama['bookId']; ?>&title=<?php echo urlencode($heroDrama['title']); ?>&cover=<?php echo urlencode($heroDrama['cover']); ?>" class="btn btn-lg px-5 py-3 rounded-pill fw-bold" style="background-color: var(--primary-color); color: #fff; border: none;">
+                                <i class="bi bi-magic me-2"></i> GENERATE CONTENT
+                            </a>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
-        <?php elseif (empty($dramas)): ?>
-            <div class="alert alert-warning">No dramas found. Website structure might have changed.</div>
-        <?php else: ?>
-            <div class="row row-cols-1 row-cols-md-3 row-cols-lg-4 g-4">
-                <?php foreach ($dramas as $drama): ?>
-                    <?php if (!is_array($drama)) continue; ?>
-                    <div class="col">
-                        <div class="card h-100 drama-card shadow-sm">
-                            <img src="<?php echo $drama['cover']; ?>" class="card-img-top" alt="<?php echo $drama['title']; ?>" onerror="this.src='https://via.placeholder.com/240x400?text=No+Image'">
-                            <div class="card-body">
-                                <h6 class="card-title text-truncate"><?php echo $drama['title']; ?></h6>
-                                <p class="card-text small text-muted">ID: <?php echo $drama['bookId']; ?></p>
-
-                                <div class="d-grid mt-3">
-                                    <?php if (in_array($drama['bookId'], $existing_ids)): ?>
-                                        <button class="btn btn-sm btn-success disabled">Generated</button>
-                                    <?php else: ?>
-                                        <a href="generate.php?bookId=<?php echo $drama['bookId']; ?>&title=<?php echo urlencode($drama['title']); ?>&cover=<?php echo urlencode($drama['cover']); ?>" class="btn btn-sm btn-primary">Generate Content</a>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                <?php endforeach; ?>
-            </div>
+        </section>
         <?php endif; ?>
-    </div>
+
+        <main class="pb-5">
+            <?php foreach ($categories as $category): ?>
+                <div class="section-container">
+                    <div class="section-header px-lg-5">
+                        <h2 class="section-title"><?php echo $category['name']; ?></h2>
+                        <span class="text-muted small"><?php echo count($category['items']); ?> Items</span>
+                    </div>
+                    <div class="horizontal-slider px-lg-5">
+                        <?php foreach ($category['items'] as $item): ?>
+                            <div class="drama-card">
+                                <div class="card-img-container shadow">
+                                    <img src="<?php echo $item['cover']; ?>" alt="<?php echo $item['title']; ?>" loading="lazy" onerror="this.src='https://via.placeholder.com/240x400?text=No+Image'">
+                                    <div class="card-overlay">
+                                        <?php if (in_array($item['bookId'], $existing_ids)): ?>
+                                            <span class="generate-btn btn-generated">DONE</span>
+                                        <?php else: ?>
+                                            <a href="generate.php?bookId=<?php echo $item['bookId']; ?>&title=<?php echo urlencode($item['title']); ?>&cover=<?php echo urlencode($item['cover']); ?>" class="generate-btn">GENERATE</a>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                                <div class="card-title"><?php echo $item['title']; ?></div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </main>
+    <?php endif; ?>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

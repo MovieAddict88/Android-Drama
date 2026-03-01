@@ -29,14 +29,14 @@ function fetch_url($url) {
 }
 
 /**
- * Scrape DramaBox website for drama list
+ * Scrape DramaBox website for drama list with categories
  */
 function scrape_dramabox() {
     $url = "https://www.dramaboxdb.com/";
     $html = fetch_url($url);
     if (!$html || strpos($html, 'Error:') === 0) return ['error' => 'Failed to fetch the website. ' . $html];
 
-    $dramas = [];
+    $categories = [];
 
     // Attempt to parse JSON from __NEXT_DATA__ for more accurate info
     if (preg_match('/<script id="__NEXT_DATA__" type="application\/json">(.*?)<\/script>/', $html, $scriptMatches)) {
@@ -45,18 +45,22 @@ function scrape_dramabox() {
             $homeData = $jsonData['props']['pageProps']['initialState']['home']['homeData'];
             foreach ($homeData as $section) {
                 if (isset($section['list']) && is_array($section['list'])) {
+                    $sectionItems = [];
                     foreach ($section['list'] as $item) {
                         if (isset($item['bookId'])) {
-                            $id = $item['bookId'];
-                            if (!isset($dramas[$id])) {
-                                $dramas[$id] = [
-                                    'bookId' => $id,
-                                    'title' => $item['bookName'] ?? $item['bookNameEn'] ?? 'Unknown',
-                                    'slug' => $item['replacedBookName'] ?? '',
-                                    'cover' => $item['cover'] ?? ''
-                                ];
-                            }
+                            $sectionItems[] = [
+                                'bookId' => $item['bookId'],
+                                'title' => $item['bookName'] ?? $item['bookNameEn'] ?? 'Unknown',
+                                'slug' => $item['replacedBookName'] ?? '',
+                                'cover' => $item['cover'] ?? ''
+                            ];
                         }
+                    }
+                    if (!empty($sectionItems)) {
+                        $categories[] = [
+                            'name' => $section['moduleName'] ?? 'Recommended',
+                            'items' => $sectionItems
+                        ];
                     }
                 }
             }
@@ -64,7 +68,8 @@ function scrape_dramabox() {
     }
 
     // Fallback to regex if JSON parsing failed or found nothing
-    if (empty($dramas)) {
+    if (empty($categories)) {
+        $dramas = [];
         preg_match_all('/\/movie\/(\d+)\/([^\s"\'>]+)/', $html, $matches);
         if (!empty($matches[1])) {
             $ids = $matches[1];
@@ -84,13 +89,19 @@ function scrape_dramabox() {
                 }
             }
         }
+        if (!empty($dramas)) {
+            $categories[] = [
+                'name' => 'All Content',
+                'items' => array_values($dramas)
+            ];
+        }
     }
 
-    if (empty($dramas)) {
+    if (empty($categories)) {
         return ['error' => 'No dramas found on the page. Website structure might have changed.'];
     }
 
-    return array_values($dramas);
+    return $categories;
 }
 
 /**
