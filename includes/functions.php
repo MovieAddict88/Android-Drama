@@ -8,9 +8,22 @@ function fetch_url($url) {
     curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Language: en-US,en;q=0.9',
+        'Cache-Control: max-age=0',
+        'Connection: keep-alive',
+        'Upgrade-Insecure-Requests: 1'
+    ]);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
     $result = curl_exec($ch);
+    if (curl_errno($ch)) {
+        $error_msg = curl_error($ch);
+        curl_close($ch);
+        return "Error: $error_msg";
+    }
     curl_close($ch);
     return $result;
 }
@@ -21,7 +34,7 @@ function fetch_url($url) {
 function scrape_dramabox() {
     $url = "https://www.dramaboxdb.com/";
     $html = fetch_url($url);
-    if (!$html) return ['error' => 'Failed to fetch the website. Content might be blocked by the server or empty.'];
+    if (!$html || strpos($html, 'Error:') === 0) return ['error' => 'Failed to fetch the website. ' . $html];
 
     $dramas = [];
     // More robust regex to handle potential variations in quotes or spaces

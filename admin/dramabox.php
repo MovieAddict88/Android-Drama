@@ -50,14 +50,32 @@ $existing_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
     </nav>
 
     <div class="container py-4">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h3>DramaBox Content</h3>
-            <div class="text-muted">Scraped from dramaboxdb.com</div>
+        <div class="row align-items-center mb-4">
+            <div class="col-md-6">
+                <h3>DramaBox Content</h3>
+                <div class="text-muted">Scraped from dramaboxdb.com</div>
+            </div>
+            <div class="col-md-6 text-md-end mt-3 mt-md-0">
+                <form class="row g-2 justify-content-md-end" action="generate.php" method="GET">
+                    <div class="col-auto">
+                        <input type="text" name="bookId" class="form-control form-control-sm" placeholder="Enter Book ID manually..." required>
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-sm btn-dark">Generate</button>
+                    </div>
+                </form>
+            </div>
         </div>
 
         <?php if (isset($dramas['error'])): ?>
-            <div class="alert alert-danger">
-                <i class="bi bi-exclamation-triangle-fill"></i> <?php echo htmlspecialchars($dramas['error']); ?>
+            <div class="alert alert-info border-0 shadow-sm">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-info-circle-fill me-3 h4 mb-0 text-primary"></i>
+                    <div>
+                        <strong>Scraping failed:</strong> <?php echo htmlspecialchars($dramas['error']); ?>
+                        <br><small>This usually happens if the target site blocks requests or its structure changed. You can still add dramas manually above using their Book ID.</small>
+                    </div>
+                </div>
             </div>
         <?php elseif (empty($dramas)): ?>
             <div class="alert alert-warning">No dramas found. Website structure might have changed.</div>
