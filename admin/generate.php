@@ -17,6 +17,14 @@ if ($episodesData && is_array($episodesData)) {
     try {
         $pdo->beginTransaction();
 
+        // Fallback for title and cover
+        if ($title == 'Unknown' || empty($title)) {
+            $title = "Drama " . $bookId;
+        }
+        if (empty($cover) && isset($episodesData[0]['chapterImg'])) {
+            $cover = $episodesData[0]['chapterImg'];
+        }
+
         // Check if drama already exists
         $stmt = $pdo->prepare("SELECT id FROM dramas WHERE book_id = ?");
         $stmt->execute([$bookId]);
@@ -28,6 +36,9 @@ if ($episodesData && is_array($episodesData)) {
             $dramaId = $pdo->lastInsertId();
         } else {
             $dramaId = $drama['id'];
+            // Update title/cover if they were previously unknown/empty
+            $stmt = $pdo->prepare("UPDATE dramas SET title = ?, cover_img = ? WHERE id = ? AND (title LIKE 'Drama %' OR cover_img = '')");
+            $stmt->execute([$title, $cover, $dramaId]);
         }
 
         // Insert Episodes

@@ -37,32 +37,51 @@ function scrape_dramabox() {
     if (!$html || strpos($html, 'Error:') === 0) return ['error' => 'Failed to fetch the website. ' . $html];
 
     $dramas = [];
-    // More robust regex to handle potential variations in quotes or spaces
-    preg_match_all('/\/movie\/(\d+)\/([^\s"\'>]+)/', $html, $matches);
 
-    if (!empty($matches[1])) {
-        $ids = $matches[1];
-        $slugs = $matches[2];
+    // Attempt to parse JSON from __NEXT_DATA__ for more accurate info
+    if (preg_match('/<script id="__NEXT_DATA__" type="application\/json">(.*?)<\/script>/', $html, $scriptMatches)) {
+        $jsonData = json_decode($scriptMatches[1], true);
+        if (isset($jsonData['props']['pageProps']['initialState']['home']['homeData'])) {
+            $homeData = $jsonData['props']['pageProps']['initialState']['home']['homeData'];
+            foreach ($homeData as $section) {
+                if (isset($section['list']) && is_array($section['list'])) {
+                    foreach ($section['list'] as $item) {
+                        if (isset($item['bookId'])) {
+                            $id = $item['bookId'];
+                            if (!isset($dramas[$id])) {
+                                $dramas[$id] = [
+                                    'bookId' => $id,
+                                    'title' => $item['bookName'] ?? $item['bookNameEn'] ?? 'Unknown',
+                                    'slug' => $item['replacedBookName'] ?? '',
+                                    'cover' => $item['cover'] ?? ''
+                                ];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
-        for ($i = 0; $i < count($ids); $i++) {
-            $id = $ids[$i];
-            $slug = $slugs[$i];
-
-            if (!isset($dramas[$id])) {
-                // Remove trailing punctuation from slug if any
-                $slug = rtrim($slug, '/');
-                $title = str_replace(['-', '_'], ' ', $slug);
-                $title = ucwords($title);
-
-                // Determine subdirectory for images (it's either 4x1 or 4x2 based on ID prefix usually)
-                $subDir = (strpos($id, '41') === 0) ? '4x1' : '4x2';
-
-                $dramas[$id] = [
-                    'bookId' => $id,
-                    'title' => $title,
-                    'slug' => $slug,
-                    'cover' => "https://thwztchapter.dramaboxdb.com/data/cppartner/$subDir/" . substr($id, 0, 2) . "x0/" . substr($id, 0, 3) . "x0/$id/$id.jpg@w=240&h=400"
-                ];
+    // Fallback to regex if JSON parsing failed or found nothing
+    if (empty($dramas)) {
+        preg_match_all('/\/movie\/(\d+)\/([^\s"\'>]+)/', $html, $matches);
+        if (!empty($matches[1])) {
+            $ids = $matches[1];
+            $slugs = $matches[2];
+            for ($i = 0; $i < count($ids); $i++) {
+                $id = $ids[$i];
+                $slug = rtrim($slugs[$i], '/');
+                if (!isset($dramas[$id])) {
+                    $title = ucwords(str_replace(['-', '_'], ' ', $slug));
+                    $subDir = (strpos($id, '41') === 0) ? '4x1' : '4x2';
+                    $dramas[$id] = [
+                        'bookId' => $id,
+                        'title' => $title,
+                        'slug' => $slug,
+                        'cover' => "https://thwztchapter.dramaboxdb.com/data/cppartner/$subDir/" . substr($id, 0, 2) . "x0/" . substr($id, 0, 3) . "x0/$id/$id.jpg@w=240&h=400"
+                    ];
+                }
             }
         }
     }

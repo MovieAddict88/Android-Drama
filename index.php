@@ -51,7 +51,7 @@ $dramas = $stmt->fetchAll();
                 <p>No dramas available yet. Check back later or add from admin panel.</p>
             </div>
         <?php else: ?>
-            <div class="row row-cols-1 row-cols-md-3 row-cols-lg-4 row-cols-xl-6 g-4">
+            <div class="row row-cols-2 row-cols-sm-3 row-cols-md-3 row-cols-lg-4 row-cols-xl-6 g-4">
                 <?php foreach ($dramas as $drama): ?>
                     <div class="col">
                         <a href="watch.php?id=<?php echo (int)$drama['id']; ?>" class="text-decoration-none">

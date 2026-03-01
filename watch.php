@@ -55,7 +55,7 @@ if (!$currentEpisode && !empty($episodes)) {
         .ep-item.active { background-color: #0d6efd; }
         .video-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; background-color: #000; border-radius: 8px; }
         .video-container video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
-        .drama-header { background: linear-gradient(rgba(0,0,0,0.8), rgba(18,18,18,1)), url('<?php echo $drama['cover_img']; ?>'); background-size: cover; background-position: center; padding: 60px 0; margin-bottom: 30px; }
+        .drama-header { background: linear-gradient(rgba(0,0,0,0.8), rgba(18,18,18,1)), url('<?php echo htmlspecialchars($drama['cover_img']); ?>'); background-size: cover; background-position: center; padding: 60px 0; margin-bottom: 30px; }
     </style>
 </head>
 <body>
@@ -77,10 +77,10 @@ if (!$currentEpisode && !empty($episodes)) {
     <div class="drama-header">
         <div class="container">
             <div class="row">
-                <div class="col-md-3 d-none d-md-block">
+                <div class="col-md-3 col-4 mb-3 mb-md-0">
                     <img src="<?php echo htmlspecialchars($drama['cover_img']); ?>" class="img-fluid rounded shadow" alt="<?php echo htmlspecialchars($drama['title']); ?>" onerror="this.src='https://via.placeholder.com/240x400?text=No+Image'">
                 </div>
-                <div class="col-md-9 d-flex flex-column justify-content-center">
+                <div class="col-md-9 col-8 d-flex flex-column justify-content-center">
                     <h1 class="display-4 fw-bold"><?php echo htmlspecialchars($drama['title']); ?></h1>
                     <p class="lead">Book ID: <?php echo htmlspecialchars($drama['book_id']); ?></p>
                     <div class="mt-2">
