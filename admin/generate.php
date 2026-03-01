@@ -64,16 +64,21 @@ if ($episodesData && is_array($episodesData)) {
             $chapterName = $ep['chapterName'] ?? '';
             $chapterImg = $ep['chapterImg'] ?? '';
 
-            // Find video URL - picking the best quality available
-            $videoUrl = '';
+            // Find video resolutions
+            $resolutions = [];
             if (isset($ep['cdnList'][0]['videoPathList'])) {
-                $videoList = $ep['cdnList'][0]['videoPathList'];
+                foreach ($ep['cdnList'][0]['videoPathList'] as $video) {
+                    $resolutions[] = [
+                        'quality' => $video['quality'],
+                        'videoPath' => $video['videoPath']
+                    ];
+                }
                 // Sort by quality descending
-                usort($videoList, function($a, $b) {
+                usort($resolutions, function($a, $b) {
                     return $b['quality'] - $a['quality'];
                 });
-                $videoUrl = $videoList[0]['videoPath'] ?? '';
             }
+            $videoUrl = !empty($resolutions) ? json_encode($resolutions) : '';
 
             // Check if episode already exists
             $checkStmt = $pdo->prepare("SELECT id FROM episodes WHERE drama_id = ? AND chapter_id = ?");
