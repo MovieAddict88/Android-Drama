@@ -11,6 +11,20 @@ if (!$bookId) {
     die("Missing bookId");
 }
 
+// Try to fetch better metadata from Sansekai detail API if title is unknown
+if ($title == 'Unknown' || empty($title) || empty($cover)) {
+    $detailJson = fetch_url("https://api.sansekai.my.id/api/dramabox/detail?bookId=" . $bookId);
+    if ($detailJson) {
+        $detailData = json_decode($detailJson, true);
+        if (isset($detailData['bookName'])) {
+            $title = $detailData['bookName'];
+        }
+        if (isset($detailData['coverWap']) && empty($cover)) {
+            $cover = $detailData['coverWap'];
+        }
+    }
+}
+
 $episodesData = fetch_episodes_from_api($bookId);
 
 if ($episodesData && is_array($episodesData)) {

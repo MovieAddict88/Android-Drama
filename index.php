@@ -17,7 +17,12 @@ $dramas = $stmt->fetchAll();
         .navbar { background-color: #000; }
         .card { background-color: #1e1e1e; color: white; border: none; transition: 0.3s; }
         .card:hover { transform: scale(1.05); }
-        .drama-img { height: 350px; object-fit: cover; }
+        .drama-img { height: 300px; object-fit: cover; }
+        @media (max-width: 576px) {
+            .drama-img { height: 160px; }
+            .card-title { font-size: 0.8rem; }
+            .g-4 { --bs-gutter-x: 0.5rem; --bs-gutter-y: 0.5rem; }
+        }
         .hero { background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://www.dramaboxdb.com/images/dramabox/subscription-bg.webp'); background-size: cover; padding: 100px 0; }
     </style>
 </head>
@@ -51,13 +56,13 @@ $dramas = $stmt->fetchAll();
                 <p>No dramas available yet. Check back later or add from admin panel.</p>
             </div>
         <?php else: ?>
-            <div class="row row-cols-2 row-cols-sm-3 row-cols-md-3 row-cols-lg-4 row-cols-xl-6 g-4">
+            <div class="row row-cols-3 row-cols-sm-3 row-cols-md-3 row-cols-lg-4 row-cols-xl-6 g-4 px-1">
                 <?php foreach ($dramas as $drama): ?>
                     <div class="col">
                         <a href="watch.php?id=<?php echo (int)$drama['id']; ?>" class="text-decoration-none">
                             <div class="card h-100 shadow">
                                 <img src="<?php echo htmlspecialchars($drama['cover_img']); ?>" class="card-img-top drama-img" alt="<?php echo htmlspecialchars($drama['title']); ?>" onerror="this.src='https://via.placeholder.com/240x400?text=No+Image'">
-                                <div class="card-body p-2">
+                                <div class="card-body p-2 text-center">
                                     <h6 class="card-title text-truncate mb-0"><?php echo htmlspecialchars($drama['title']); ?></h6>
                                 </div>
                             </div>
