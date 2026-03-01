@@ -3,7 +3,16 @@ require_once '../includes/db.php';
 require_once '../includes/functions.php';
 check_admin_login();
 
-$categories = scrape_dramabox();
+$search_query = $_GET['search'] ?? '';
+$page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+$search_results = [];
+$categories = [];
+
+if ($search_query) {
+    $search_results = search_dramabox($search_query, $page);
+} else {
+    $categories = scrape_dramabox();
+}
 
 // Check which ones are already generated
 $stmt = $pdo->query("SELECT book_id FROM dramas");
@@ -97,26 +106,14 @@ $existing_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
             background-color: var(--primary-color);
             border-radius: 2px;
         }
-        .horizontal-slider {
-            display: flex;
-            overflow-x: auto;
-            scroll-behavior: smooth;
-            padding: 10px 15px 25px;
-            gap: 18px;
-            -ms-overflow-style: none;  /* IE and Edge */
-            scrollbar-width: none;  /* Firefox */
-        }
-        .horizontal-slider::-webkit-scrollbar {
-            display: none; /* Chrome, Safari, Opera */
-        }
         .drama-card {
-            min-width: 170px;
-            width: 170px;
-            flex: 0 0 auto;
             transition: transform 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
             cursor: pointer;
             border: none;
             background: transparent;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
         }
         .drama-card:hover {
             transform: scale(1.06);
@@ -214,10 +211,14 @@ $existing_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
                     <li class="nav-item"><a class="nav-link" href="index.php">Dashboard</a></li>
                     <li class="nav-item"><a class="nav-link active" href="dramabox.php">Browse DramaBox</a></li>
                 </ul>
-                <div class="d-flex align-items-center">
+                <div class="d-flex align-items-center flex-wrap gap-2 py-2 py-lg-0">
+                    <form class="d-flex" action="dramabox.php" method="GET">
+                        <input type="text" name="search" class="form-control form-control-sm bg-dark border-secondary text-white rounded-pill px-3" placeholder="Search..." value="<?php echo htmlspecialchars($search_query); ?>" style="max-width: 150px;">
+                        <button type="submit" class="btn btn-sm btn-outline-light ms-2 rounded-pill">Search</button>
+                    </form>
                     <form class="d-flex me-3" action="generate.php" method="GET">
-                        <input type="text" name="bookId" class="form-control form-control-sm bg-dark border-secondary text-white rounded-pill px-3" placeholder="Add by Book ID..." required>
-                        <button type="submit" class="btn btn-sm btn-outline-light ms-2 rounded-pill">Add</button>
+                        <input type="text" name="bookId" class="form-control form-control-sm bg-dark border-secondary text-white rounded-pill px-3" placeholder="Book ID..." required style="max-width: 100px;">
+                        <button type="submit" class="btn btn-sm btn-primary ms-2 rounded-pill" style="background-color: var(--primary-color); border: none;">Add</button>
                     </form>
                     <a href="logout.php" class="text-white text-decoration-none small opacity-75 hover-opacity-100"><i class="bi bi-box-arrow-right fs-5"></i></a>
                 </div>
@@ -225,7 +226,79 @@ $existing_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
         </div>
     </nav>
 
-    <?php if (isset($categories['error'])): ?>
+    <?php if ($search_query): ?>
+        <main class="py-4">
+            <div class="section-container mb-5">
+                <div class="section-header px-lg-5">
+                    <h2 class="section-title">Search Results for "<?php echo htmlspecialchars($search_query); ?>"</h2>
+                    <span class="text-muted small"><?php echo is_array($search_results) ? count($search_results) : 0; ?> Results</span>
+                </div>
+                <div class="container-fluid px-lg-5">
+                    <?php if (isset($search_results['error'])): ?>
+                        <div class="alert alert-custom p-4"><?php echo $search_results['error']; ?></div>
+                    <?php elseif (empty($search_results)): ?>
+                        <div class="alert alert-custom p-4">No results found for "<?php echo htmlspecialchars($search_query); ?>"</div>
+                    <?php else: ?>
+                        <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6 g-3 g-lg-4">
+                            <?php foreach ($search_results as $item): ?>
+                                <div class="col">
+                                    <div class="drama-card">
+                                        <div class="card-img-container shadow">
+                                            <img src="<?php echo $item['cover']; ?>" alt="<?php echo $item['title']; ?>" loading="lazy" onerror="this.src='https://via.placeholder.com/240x400?text=No+Image'">
+                                            <div class="card-overlay">
+                                                <?php if (in_array($item['bookId'], $existing_ids)): ?>
+                                                    <span class="generate-btn btn-generated">DONE</span>
+                                                <?php else: ?>
+                                                    <a href="generate.php?bookId=<?php echo $item['bookId']; ?>&title=<?php echo urlencode($item['title']); ?>&cover=<?php echo urlencode($item['cover']); ?>" class="generate-btn">GENERATE</a>
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
+                                        <div class="card-title mt-2"><?php echo $item['title']; ?></div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+
+                        <!-- Pagination -->
+                        <div class="d-flex justify-content-center mt-5">
+                            <nav aria-label="Search results pagination">
+                                <ul class="pagination pagination-lg">
+                                    <li class="page-item <?php echo ($page <= 1) ? 'disabled' : ''; ?>">
+                                        <a class="page-link bg-dark border-secondary text-white" href="?search=<?php echo urlencode($search_query); ?>&page=<?php echo $page - 1; ?>" aria-label="Previous">
+                                            <span aria-hidden="true">&laquo; Previous</span>
+                                        </a>
+                                    </li>
+                                    <li class="page-item active">
+                                        <span class="page-link bg-primary border-primary"><?php echo $page; ?></span>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link bg-dark border-secondary text-white" href="?search=<?php echo urlencode($search_query); ?>&page=<?php echo $page + 1; ?>" aria-label="Next">
+                                            <span aria-hidden="true">Next &raquo;</span>
+                                        </a>
+                                    </li>
+                                </ul>
+                            </nav>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <div class="container-fluid px-lg-5 mb-5">
+                <div class="manual-form-container">
+                    <h4>Manual Content Generation</h4>
+                    <p class="text-muted">Directly add by Book ID if you can't find it in search.</p>
+                    <form action="generate.php" method="GET" class="row g-3">
+                        <div class="col-md-6">
+                            <input type="text" name="bookId" class="form-control bg-dark border-secondary text-white" placeholder="Example: 41000000057" required>
+                        </div>
+                        <div class="col-auto">
+                            <button type="submit" class="btn btn-primary px-4" style="background-color: var(--primary-color); border: none;">Generate Content</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+    <?php elseif (isset($categories['error'])): ?>
         <div class="container mt-5">
             <div class="alert alert-custom p-4 shadow">
                 <div class="d-flex align-items-center">
@@ -251,67 +324,51 @@ $existing_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
             </div>
         </div>
     <?php else: ?>
-        <?php
-        $heroDrama = null;
-        if (!empty($categories)) {
-            foreach ($categories as $cat) {
-                if (!empty($cat['items'])) {
-                    $heroDrama = $cat['items'][0];
-                    break;
-                }
-            }
-        }
-        ?>
-
-        <?php if ($heroDrama): ?>
-        <section class="hero-section" style="background-image: url('<?php echo $heroDrama['cover']; ?>');">
-            <div class="hero-overlay"></div>
-            <div class="container-fluid px-lg-5">
-                <div class="hero-content">
-                    <h1 class="hero-title"><?php echo $heroDrama['title']; ?></h1>
-                    <p class="hero-desc">Discover the most trending short drama from DramaBox. High-speed storytelling with immersive vertical video experience.</p>
-                    <div class="d-flex gap-3">
-                        <?php if (in_array($heroDrama['bookId'], $existing_ids)): ?>
-                            <button class="btn btn-lg px-5 py-3 rounded-pill fw-bold" style="background-color: #2ecc71; color: #fff; border: none;" disabled>
-                                <i class="bi bi-check-circle-fill me-2"></i> GENERATED
-                            </button>
-                        <?php else: ?>
-                            <a href="generate.php?bookId=<?php echo $heroDrama['bookId']; ?>&title=<?php echo urlencode($heroDrama['title']); ?>&cover=<?php echo urlencode($heroDrama['cover']); ?>" class="btn btn-lg px-5 py-3 rounded-pill fw-bold" style="background-color: var(--primary-color); color: #fff; border: none;">
-                                <i class="bi bi-magic me-2"></i> GENERATE CONTENT
-                            </a>
-                        <?php endif; ?>
-                    </div>
-                </div>
-            </div>
-        </section>
-        <?php endif; ?>
-
-        <main class="pb-5">
+        <main class="py-4">
             <?php foreach ($categories as $category): ?>
-                <div class="section-container">
+                <div class="section-container mb-5">
                     <div class="section-header px-lg-5">
                         <h2 class="section-title"><?php echo $category['name']; ?></h2>
                         <span class="text-muted small"><?php echo count($category['items']); ?> Items</span>
                     </div>
-                    <div class="horizontal-slider px-lg-5">
-                        <?php foreach ($category['items'] as $item): ?>
-                            <div class="drama-card">
-                                <div class="card-img-container shadow">
-                                    <img src="<?php echo $item['cover']; ?>" alt="<?php echo $item['title']; ?>" loading="lazy" onerror="this.src='https://via.placeholder.com/240x400?text=No+Image'">
-                                    <div class="card-overlay">
-                                        <?php if (in_array($item['bookId'], $existing_ids)): ?>
-                                            <span class="generate-btn btn-generated">DONE</span>
-                                        <?php else: ?>
-                                            <a href="generate.php?bookId=<?php echo $item['bookId']; ?>&title=<?php echo urlencode($item['title']); ?>&cover=<?php echo urlencode($item['cover']); ?>" class="generate-btn">GENERATE</a>
-                                        <?php endif; ?>
+                    <div class="container-fluid px-lg-5">
+                        <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6 g-3 g-lg-4">
+                            <?php foreach ($category['items'] as $item): ?>
+                                <div class="col">
+                                    <div class="drama-card">
+                                        <div class="card-img-container shadow">
+                                            <img src="<?php echo $item['cover']; ?>" alt="<?php echo $item['title']; ?>" loading="lazy" onerror="this.src='https://via.placeholder.com/240x400?text=No+Image'">
+                                            <div class="card-overlay">
+                                                <?php if (in_array($item['bookId'], $existing_ids)): ?>
+                                                    <span class="generate-btn btn-generated">DONE</span>
+                                                <?php else: ?>
+                                                    <a href="generate.php?bookId=<?php echo $item['bookId']; ?>&title=<?php echo urlencode($item['title']); ?>&cover=<?php echo urlencode($item['cover']); ?>" class="generate-btn">GENERATE</a>
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
+                                        <div class="card-title mt-2"><?php echo $item['title']; ?></div>
                                     </div>
                                 </div>
-                                <div class="card-title"><?php echo $item['title']; ?></div>
-                            </div>
-                        <?php endforeach; ?>
+                            <?php endforeach; ?>
+                        </div>
                     </div>
                 </div>
             <?php endforeach; ?>
+
+            <div class="container-fluid px-lg-5 mb-5 mt-4">
+                <div class="manual-form-container">
+                    <h4>Manual Content Generation</h4>
+                    <p class="text-muted">Enter the DramaBox Book ID to fetch data directly via API.</p>
+                    <form action="generate.php" method="GET" class="row g-3">
+                        <div class="col-md-6">
+                            <input type="text" name="bookId" class="form-control bg-dark border-secondary text-white" placeholder="Example: 41000000057" required>
+                        </div>
+                        <div class="col-auto">
+                            <button type="submit" class="btn btn-primary px-4" style="background-color: var(--primary-color); border: none;">Generate Content</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </main>
     <?php endif; ?>
 
