@@ -1,0 +1,28 @@
+CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS dramas (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    book_id VARCHAR(50) UNIQUE NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    cover_img VARCHAR(255),
+    platform VARCHAR(50) DEFAULT 'dramabox',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS episodes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    drama_id INT NOT NULL,
+    chapter_id VARCHAR(50) NOT NULL,
+    chapter_index INT NOT NULL,
+    chapter_name VARCHAR(255),
+    video_url TEXT,
+    chapter_img VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (drama_id) REFERENCES dramas(id) ON DELETE CASCADE
+);

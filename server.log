@@ -1,0 +1,6 @@
+[Sun Mar  1 12:00:24 2026] PHP 8.3.6 Development Server (http://localhost:8000) started
+[Sun Mar  1 12:00:26 2026] [::1]:47376 Accepted
+[Sun Mar  1 12:00:26 2026] PHP Warning:  Undefined array key "admin_user" in /app/install.php on line 17
+[Sun Mar  1 12:00:26 2026] PHP Warning:  Undefined array key "admin_pass" in /app/install.php on line 18
+[Sun Mar  1 12:00:26 2026] [::1]:47376 [200]: POST /install.php
+[Sun Mar  1 12:00:26 2026] [::1]:47376 Closing
