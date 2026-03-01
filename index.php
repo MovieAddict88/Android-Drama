@@ -1,8 +1,16 @@
 <?php
 require_once 'includes/db.php';
 
+// Fetch all dramas grouped by category
 $stmt = $pdo->query("SELECT * FROM dramas ORDER BY created_at DESC");
-$dramas = $stmt->fetchAll();
+$allDramas = $stmt->fetchAll();
+
+$categorizedDramas = [];
+foreach ($allDramas as $drama) {
+    $cat = $drama['category'] ?? 'General';
+    $categorizedDramas[$cat][] = $drama;
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -13,23 +21,72 @@ $dramas = $stmt->fetchAll();
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <style>
-        body { background-color: #121212; color: white; }
-        .navbar { background-color: #000; }
-        .card { background-color: #1e1e1e; color: white; border: none; transition: 0.3s; }
-        .card:hover { transform: scale(1.05); }
-        .drama-img { height: 300px; object-fit: cover; }
-        @media (max-width: 576px) {
-            .drama-img { height: 160px; }
-            .card-title { font-size: 0.8rem; }
-            .g-4 { --bs-gutter-x: 0.5rem; --bs-gutter-y: 0.5rem; }
+        body { background-color: #121212; color: white; font-family: 'Inter', sans-serif; }
+        .navbar { background-color: #000; padding: 1rem 0; }
+        .navbar-brand { font-size: 1.5rem; letter-spacing: 1px; }
+
+        .hero {
+            background: linear-gradient(rgba(0,0,0,0.7), rgba(18,18,18,1)), url('https://www.dramaboxdb.com/images/dramabox/subscription-bg.webp');
+            background-size: cover;
+            background-position: center;
+            padding: 120px 0 60px;
+            text-align: center;
         }
-        .hero { background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://www.dramaboxdb.com/images/dramabox/subscription-bg.webp'); background-size: cover; padding: 100px 0; }
+
+        .category-section { margin-bottom: 3rem; }
+        .category-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 1.5rem; padding-left: 10px; border-left: 4px solid #ff2d55; }
+
+        .drama-slider {
+            display: flex;
+            overflow-x: auto;
+            gap: 15px;
+            padding-bottom: 15px;
+            scrollbar-width: none; /* Firefox */
+        }
+        .drama-slider::-webkit-scrollbar { display: none; /* Chrome/Safari */ }
+
+        .drama-card {
+            flex: 0 0 180px;
+            text-decoration: none;
+            color: white;
+            transition: transform 0.3s;
+        }
+        .drama-card:hover { transform: translateY(-5px); }
+
+        .drama-img-wrapper {
+            position: relative;
+            aspect-ratio: 9/16;
+            overflow: hidden;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+        .drama-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .drama-title {
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            line-height: 1.2;
+        }
+
+        @media (max-width: 576px) {
+            .drama-card { flex: 0 0 130px; }
+            .hero h1 { font-size: 2rem; }
+        }
+
+        footer { background-color: #000; border-top: 1px solid #333; }
     </style>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
         <div class="container">
-            <a class="navbar-brand fw-bold" href="index.php">DRAMA BOX</a>
+            <a class="navbar-brand fw-bold text-danger" href="index.php">DRAMA<span class="text-white">BOX</span></a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -42,39 +99,45 @@ $dramas = $stmt->fetchAll();
         </div>
     </nav>
 
-    <div class="hero text-center">
+    <div class="hero">
         <div class="container">
-            <h1 class="display-3 fw-bold">Watch Trending Short Dramas</h1>
-            <p class="lead">Free and High Quality Episodes from DramaBox</p>
+            <h1 class="display-4 fw-bold mb-3">Watch Trending Short Dramas</h1>
+            <p class="lead opacity-75">Binge-worthy short dramas, anytime, anywhere.</p>
         </div>
     </div>
 
-    <div class="container py-5">
-        <h3 class="mb-4">Explore Dramas</h3>
-        <?php if (empty($dramas)): ?>
-            <div class="alert alert-secondary text-center py-5">
+    <div class="container py-4">
+        <?php if (empty($categorizedDramas)): ?>
+            <div class="alert alert-secondary text-center py-5 bg-dark border-0">
+                <i class="bi bi-film h1 d-block mb-3 opacity-50"></i>
                 <p>No dramas available yet. Check back later or add from admin panel.</p>
             </div>
         <?php else: ?>
-            <div class="row row-cols-3 row-cols-sm-3 row-cols-md-3 row-cols-lg-4 row-cols-xl-6 g-4 px-1">
-                <?php foreach ($dramas as $drama): ?>
-                    <div class="col">
-                        <a href="watch.php?id=<?php echo (int)$drama['id']; ?>" class="text-decoration-none">
-                            <div class="card h-100 shadow">
-                                <img src="<?php echo htmlspecialchars($drama['cover_img']); ?>" class="card-img-top drama-img" alt="<?php echo htmlspecialchars($drama['title']); ?>" onerror="this.src='https://via.placeholder.com/240x400?text=No+Image'">
-                                <div class="card-body p-2 text-center">
-                                    <h6 class="card-title text-truncate mb-0"><?php echo htmlspecialchars($drama['title']); ?></h6>
+            <?php foreach ($categorizedDramas as $category => $dramas): ?>
+                <div class="category-section">
+                    <h2 class="category-title"><?php echo htmlspecialchars($category); ?></h2>
+                    <div class="drama-slider">
+                        <?php foreach ($dramas as $drama): ?>
+                            <a href="watch.php?id=<?php echo (int)$drama['id']; ?>" class="drama-card">
+                                <div class="drama-img-wrapper shadow">
+                                    <img src="<?php echo htmlspecialchars($drama['cover_img']); ?>" class="drama-img" alt="<?php echo htmlspecialchars($drama['title']); ?>" onerror="this.src='https://via.placeholder.com/240x400?text=No+Image'">
                                 </div>
-                            </div>
-                        </a>
+                                <div class="drama-title"><?php echo htmlspecialchars($drama['title']); ?></div>
+                            </a>
+                        <?php endforeach; ?>
                     </div>
-                <?php endforeach; ?>
-            </div>
+                </div>
+            <?php endforeach; ?>
         <?php endif; ?>
     </div>
 
-    <footer class="bg-black text-center py-4 mt-5">
-        <p class="mb-0 text-muted">&copy; <?php echo date('Y'); ?> Drama Box - All Rights Reserved</p>
+    <footer class="text-center py-5 mt-5">
+        <div class="container">
+            <div class="mb-4">
+                <a class="navbar-brand fw-bold text-danger" href="index.php">DRAMA<span class="text-white">BOX</span></a>
+            </div>
+            <p class="mb-0 text-muted small">&copy; <?php echo date('Y'); ?> Drama Box Clone. For educational purposes.</p>
+        </div>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
