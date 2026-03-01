@@ -21,13 +21,11 @@ function fetch_url($url) {
 function scrape_dramabox() {
     $url = "https://www.dramaboxdb.com/";
     $html = fetch_url($url);
-    if (!$html) return [];
+    if (!$html) return ['error' => 'Failed to fetch the website. Content might be blocked by the server or empty.'];
 
     $dramas = [];
-    // Match /movie/{id}/{slug}
-    // Also try to get title and cover image
-    // Note: This is a basic scrape, we might need more refined regex if layout is complex
-    preg_match_all('/\/movie\/(\d+)\/([^\s"]+)/', $html, $matches);
+    // More robust regex to handle potential variations in quotes or spaces
+    preg_match_all('/\/movie\/(\d+)\/([^\s"\'>]+)/', $html, $matches);
 
     if (!empty($matches[1])) {
         $ids = $matches[1];
@@ -38,17 +36,26 @@ function scrape_dramabox() {
             $slug = $slugs[$i];
 
             if (!isset($dramas[$id])) {
-                $title = str_replace('-', ' ', $slug);
+                // Remove trailing punctuation from slug if any
+                $slug = rtrim($slug, '/');
+                $title = str_replace(['-', '_'], ' ', $slug);
                 $title = ucwords($title);
+
+                // Determine subdirectory for images (it's either 4x1 or 4x2 based on ID prefix usually)
+                $subDir = (strpos($id, '41') === 0) ? '4x1' : '4x2';
 
                 $dramas[$id] = [
                     'bookId' => $id,
                     'title' => $title,
                     'slug' => $slug,
-                    'cover' => "https://thwztchapter.dramaboxdb.com/data/cppartner/4x1/" . substr($id, 0, 2) . "x0/" . substr($id, 0, 3) . "x0/$id/$id.jpg@w=240&h=400"
+                    'cover' => "https://thwztchapter.dramaboxdb.com/data/cppartner/$subDir/" . substr($id, 0, 2) . "x0/" . substr($id, 0, 3) . "x0/$id/$id.jpg@w=240&h=400"
                 ];
             }
         }
+    }
+
+    if (empty($dramas)) {
+        return ['error' => 'No dramas found on the page. Website structure might have changed.'];
     }
 
     return array_values($dramas);

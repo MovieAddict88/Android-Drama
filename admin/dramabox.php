@@ -55,11 +55,16 @@ $existing_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
             <div class="text-muted">Scraped from dramaboxdb.com</div>
         </div>
 
-        <?php if (empty($dramas)): ?>
-            <div class="alert alert-warning">No dramas found or failed to scrape.</div>
+        <?php if (isset($dramas['error'])): ?>
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle-fill"></i> <?php echo htmlspecialchars($dramas['error']); ?>
+            </div>
+        <?php elseif (empty($dramas)): ?>
+            <div class="alert alert-warning">No dramas found. Website structure might have changed.</div>
         <?php else: ?>
             <div class="row row-cols-1 row-cols-md-3 row-cols-lg-4 g-4">
                 <?php foreach ($dramas as $drama): ?>
+                    <?php if (!is_array($drama)) continue; ?>
                     <div class="col">
                         <div class="card h-100 drama-card shadow-sm">
                             <img src="<?php echo $drama['cover']; ?>" class="card-img-top" alt="<?php echo $drama['title']; ?>" onerror="this.src='https://via.placeholder.com/240x400?text=No+Image'">
