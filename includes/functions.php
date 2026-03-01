@@ -105,6 +105,31 @@ function scrape_dramabox() {
 }
 
 /**
+ * Search DramaBox via Sansekai API
+ */
+function search_dramabox($keyword) {
+    $apiUrl = "https://api.sansekai.my.id/api/dramabox/search?query=" . urlencode($keyword);
+    $json = fetch_url($apiUrl);
+    if (!$json) return ['error' => 'Failed to fetch search results.'];
+
+    $data = json_decode($json, true);
+    if (!is_array($data)) return ['error' => 'Invalid response from search API.'];
+
+    $items = [];
+    foreach ($data as $item) {
+        if (isset($item['bookId'])) {
+            $items[] = [
+                'bookId' => $item['bookId'],
+                'title' => $item['bookName'] ?? 'Unknown',
+                'cover' => $item['cover'] ?? ''
+            ];
+        }
+    }
+
+    return $items;
+}
+
+/**
  * Fetch all episodes for a given bookId from the Sansekai API
  */
 function fetch_episodes_from_api($bookId) {
