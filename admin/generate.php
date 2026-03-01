@@ -1,0 +1,102 @@
+<?php
+require_once '../includes/db.php';
+require_once '../includes/functions.php';
+check_admin_login();
+
+$bookId = $_GET['bookId'] ?? null;
+$title = $_GET['title'] ?? 'Unknown';
+$cover = $_GET['cover'] ?? '';
+
+if (!$bookId) {
+    die("Missing bookId");
+}
+
+$episodesData = fetch_episodes_from_api($bookId);
+
+if ($episodesData && is_array($episodesData)) {
+    try {
+        $pdo->beginTransaction();
+
+        // Check if drama already exists
+        $stmt = $pdo->prepare("SELECT id FROM dramas WHERE book_id = ?");
+        $stmt->execute([$bookId]);
+        $drama = $stmt->fetch();
+
+        if (!$drama) {
+            $stmt = $pdo->prepare("INSERT INTO dramas (book_id, title, cover_img) VALUES (?, ?, ?)");
+            $stmt->execute([$bookId, $title, $cover]);
+            $dramaId = $pdo->lastInsertId();
+        } else {
+            $dramaId = $drama['id'];
+        }
+
+        // Insert Episodes
+        $stmt = $pdo->prepare("INSERT INTO episodes (drama_id, chapter_id, chapter_index, chapter_name, video_url, chapter_img) VALUES (?, ?, ?, ?, ?, ?)");
+
+        foreach ($episodesData as $ep) {
+            $chapterId = $ep['chapterId'] ?? '';
+            $chapterIndex = $ep['chapterIndex'] ?? 0;
+            $chapterName = $ep['chapterName'] ?? '';
+            $chapterImg = $ep['chapterImg'] ?? '';
+
+            // Find video URL - picking the best quality available
+            $videoUrl = '';
+            if (isset($ep['cdnList'][0]['videoPathList'])) {
+                $videoList = $ep['cdnList'][0]['videoPathList'];
+                // Sort by quality descending
+                usort($videoList, function($a, $b) {
+                    return $b['quality'] - $a['quality'];
+                });
+                $videoUrl = $videoList[0]['videoPath'] ?? '';
+            }
+
+            // Check if episode already exists
+            $checkStmt = $pdo->prepare("SELECT id FROM episodes WHERE drama_id = ? AND chapter_id = ?");
+            $checkStmt->execute([$dramaId, $chapterId]);
+            if (!$checkStmt->fetch()) {
+                $stmt->execute([$dramaId, $chapterId, $chapterIndex, $chapterName, $videoUrl, $chapterImg]);
+            }
+        }
+
+        $pdo->commit();
+        $message = "Successfully generated " . count($episodesData) . " episodes for drama: " . htmlspecialchars($title);
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        $error = "Error saving to database: " . $e->getMessage();
+    }
+} else {
+    $error = "Failed to fetch episodes from Sansekai API.";
+}
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generating Content - Drama Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container py-5 text-center">
+        <?php if (isset($message)): ?>
+            <div class="alert alert-success py-5">
+                <i class="bi bi-check-circle h1"></i>
+                <h3>Done!</h3>
+                <p><?php echo $message; ?></p>
+                <div class="mt-4">
+                    <a href="dramabox.php" class="btn btn-outline-primary">Back to DramaBox</a>
+                    <a href="../index.php" class="btn btn-primary" target="_blank">View Site</a>
+                </div>
+            </div>
+        <?php else: ?>
+            <div class="alert alert-danger py-5">
+                <h3>Error</h3>
+                <p><?php echo $error; ?></p>
+                <div class="mt-4">
+                    <a href="dramabox.php" class="btn btn-primary">Try Again</a>
+                </div>
+            </div>
+        <?php endif; ?>
+    </div>
+</body>
+</html>
