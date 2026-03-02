@@ -32,7 +32,10 @@ if ($platform === 'reelshort') {
 
     while ($failures < $maxFailures) {
         $ep = fetch_reelshort_episode($bookId, $episodeNumber);
-        if ($ep && !isset($ep['error']) && !empty($ep['cdnList'])) {
+        // ReelShort response uses 'success' and 'videoList'
+        if ($ep && !isset($ep['error']) && ((isset($ep['success']) && $ep['success']) || !empty($ep['videoList']))) {
+            $ep['chapterIndex'] = $episodeNumber; // Use 1-based index to match API request
+            $ep['chapterName'] = "Episode " . $episodeNumber;
             $episodesData[] = $ep;
             $failures = 0; // Reset failures on success
         } else {
@@ -107,16 +110,30 @@ if ($episodesData && is_array($episodesData)) {
 
             // Find video resolutions
             $resolutions = [];
-            $cdnList = $ep['cdnList'] ?? [];
-            if (isset($cdnList[0]['videoPathList'])) {
-                foreach ($cdnList[0]['videoPathList'] as $video) {
+            if ($platform === 'reelshort' && isset($ep['videoList'])) {
+                foreach ($ep['videoList'] as $video) {
                     $resolutions[] = [
-                        'quality' => $video['quality'],
-                        'videoPath' => $video['videoPath']
+                        'quality' => (isset($video['quality']) && $video['quality'] != 0) ? $video['quality'] : 'Default',
+                        'videoPath' => $video['url']
                     ];
                 }
+            } else {
+                $cdnList = $ep['cdnList'] ?? [];
+                if (isset($cdnList[0]['videoPathList'])) {
+                    foreach ($cdnList[0]['videoPathList'] as $video) {
+                        $resolutions[] = [
+                            'quality' => $video['quality'],
+                            'videoPath' => $video['videoPath']
+                        ];
+                    }
+                }
+            }
+
+            if (!empty($resolutions)) {
                 // Sort by quality descending
                 usort($resolutions, function($a, $b) {
+                    if ($a['quality'] === 'Default') return 1;
+                    if ($b['quality'] === 'Default') return -1;
                     return (int)$b['quality'] - (int)$a['quality'];
                 });
             }
