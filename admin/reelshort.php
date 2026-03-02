@@ -9,13 +9,13 @@ $search_results = [];
 $categories = [];
 
 if ($search_query) {
-    $search_results = search_dramabox($search_query, $page);
+    $search_results = search_reelshort($search_query, $page);
 } else {
-    $categories = scrape_dramabox();
+    $categories = scrape_reelshort();
 }
 
 // Check which ones are already generated
-$stmt = $pdo->query("SELECT book_id FROM dramas WHERE platform = 'dramabox'");
+$stmt = $pdo->query("SELECT book_id FROM dramas WHERE platform = 'reelshort'");
 $existing_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
 ?>
@@ -24,12 +24,12 @@ $existing_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DramaBox Content - Admin</title>
+    <title>ReelShort Content - Admin</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <style>
         :root {
-            --primary-color: #ff0055;
+            --primary-color: #00a8ff;
             --bg-color: #0b0b0b;
             --card-bg: #1a1a1a;
             --text-main: #ffffff;
@@ -44,44 +44,6 @@ $existing_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
             background-color: rgba(0,0,0,0.8) !important;
             backdrop-filter: blur(10px);
             border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
-        .hero-section {
-            position: relative;
-            height: 55vh;
-            background-size: cover;
-            background-position: center 20%;
-            display: flex;
-            align-items: flex-end;
-            padding-bottom: 60px;
-            margin-top: -56px; /* Offset navbar */
-        }
-        .hero-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(0deg, var(--bg-color) 5%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.7) 100%);
-        }
-        .hero-content {
-            position: relative;
-            z-index: 2;
-            max-width: 800px;
-        }
-        .hero-title {
-            font-size: 3.5rem;
-            font-weight: 900;
-            margin-bottom: 15px;
-            text-shadow: 2px 2px 10px rgba(0,0,0,0.5);
-        }
-        .hero-desc {
-            font-size: 1.1rem;
-            color: #ddd;
-            margin-bottom: 25px;
-            display: -webkit-box;
-            -webkit-line-clamp: 3;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
         }
         .section-header {
             display: flex;
@@ -170,10 +132,10 @@ $existing_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
             text-decoration: none;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            box-shadow: 0 4px 10px rgba(255, 0, 85, 0.3);
+            box-shadow: 0 4px 10px rgba(0, 168, 255, 0.3);
         }
         .generate-btn:hover {
-            background-color: #e6004d;
+            background-color: #008cd4;
             color: #fff;
             transform: translateY(-2px);
         }
@@ -192,7 +154,7 @@ $existing_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
             margin-bottom: 30px;
         }
         .alert-custom {
-            background-color: rgba(255, 0, 85, 0.1);
+            background-color: rgba(0, 168, 255, 0.1);
             border: 1px solid var(--primary-color);
             color: #fff;
             border-radius: 12px;
@@ -202,22 +164,23 @@ $existing_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
         <div class="container-fluid px-lg-5">
-            <a class="navbar-brand fw-bold" href="index.php"><span style="color: var(--primary-color);">DRAMA</span>ADMIN</a>
+            <a class="navbar-brand fw-bold" href="index.php"><span style="color: var(--primary-color);">REEL</span>SHORT</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item"><a class="nav-link" href="index.php">Dashboard</a></li>
-                    <li class="nav-item"><a class="nav-link active" href="dramabox.php">Browse DramaBox</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="reelshort.php">Browse ReelShort</a></li>
                     <li class="nav-item"><a class="nav-link" href="manage.php">Manage</a></li>
                 </ul>
                 <div class="d-flex align-items-center flex-wrap gap-2 py-2 py-lg-0">
-                    <form class="d-flex" action="dramabox.php" method="GET">
+                    <form class="d-flex" action="reelshort.php" method="GET">
                         <input type="text" name="search" class="form-control form-control-sm bg-dark border-secondary text-white rounded-pill px-3" placeholder="Search..." value="<?php echo htmlspecialchars($search_query); ?>" style="max-width: 150px;">
                         <button type="submit" class="btn btn-sm btn-outline-light ms-2 rounded-pill">Search</button>
                     </form>
                     <form class="d-flex me-3" action="generate.php" method="GET">
+                        <input type="hidden" name="platform" value="reelshort">
                         <input type="text" name="bookId" class="form-control form-control-sm bg-dark border-secondary text-white rounded-pill px-3" placeholder="Book ID..." required style="max-width: 100px;">
                         <button type="submit" class="btn btn-sm btn-primary ms-2 rounded-pill" style="background-color: var(--primary-color); border: none;">Add</button>
                     </form>
@@ -250,7 +213,7 @@ $existing_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
                                                 <?php if (in_array($item['bookId'], $existing_ids)): ?>
                                                     <span class="generate-btn btn-generated">DONE</span>
                                                 <?php else: ?>
-                                                    <a href="generate.php?platform=dramabox&bookId=<?php echo htmlspecialchars($item['bookId']); ?>&title=<?php echo urlencode($item['title']); ?>&cover=<?php echo urlencode($item['cover']); ?>" class="generate-btn">GENERATE</a>
+                                                    <a href="generate.php?platform=reelshort&bookId=<?php echo htmlspecialchars($item['bookId']); ?>&title=<?php echo urlencode($item['title']); ?>&cover=<?php echo urlencode($item['cover']); ?>" class="generate-btn">GENERATE</a>
                                                 <?php endif; ?>
                                             </div>
                                         </div>
@@ -287,11 +250,11 @@ $existing_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
             <div class="container-fluid px-lg-5 mb-5">
                 <div class="manual-form-container">
                     <h4>Manual Content Generation</h4>
-                    <p class="text-muted">Directly add by Book ID if you can't find it in search.</p>
+                    <p class="text-muted">Directly add by ReelShort Book ID if you can't find it in search.</p>
                     <form action="generate.php" method="GET" class="row g-3">
-                        <input type="hidden" name="platform" value="dramabox">
+                        <input type="hidden" name="platform" value="reelshort">
                         <div class="col-md-6">
-                            <input type="text" name="bookId" class="form-control bg-dark border-secondary text-white" placeholder="Example: 41000000057" required>
+                            <input type="text" name="bookId" class="form-control bg-dark border-secondary text-white" placeholder="Example: 6994c7def370c522ef066652" required>
                         </div>
                         <div class="col-auto">
                             <button type="submit" class="btn btn-primary px-4" style="background-color: var(--primary-color); border: none;">Generate Content</button>
@@ -314,11 +277,11 @@ $existing_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
             <div class="manual-form-container mt-4">
                 <h4>Manual Content Generation</h4>
-                <p class="text-muted">Enter the DramaBox Book ID to fetch data directly via API.</p>
+                <p class="text-muted">Enter the ReelShort Book ID to fetch data directly via API.</p>
                 <form action="generate.php" method="GET" class="row g-3">
-                    <input type="hidden" name="platform" value="dramabox">
+                    <input type="hidden" name="platform" value="reelshort">
                     <div class="col-md-6">
-                        <input type="text" name="bookId" class="form-control bg-dark border-secondary text-white" placeholder="Example: 41000000057" required>
+                        <input type="text" name="bookId" class="form-control bg-dark border-secondary text-white" placeholder="Example: 6994c7def370c522ef066652" required>
                     </div>
                     <div class="col-auto">
                         <button type="submit" class="btn btn-primary px-4" style="background-color: var(--primary-color); border: none;">Generate Content</button>
@@ -345,7 +308,7 @@ $existing_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
                                                 <?php if (in_array($item['bookId'], $existing_ids)): ?>
                                                     <span class="generate-btn btn-generated">DONE</span>
                                                 <?php else: ?>
-                                                    <a href="generate.php?platform=dramabox&bookId=<?php echo htmlspecialchars($item['bookId']); ?>&title=<?php echo urlencode($item['title']); ?>&cover=<?php echo urlencode($item['cover']); ?>" class="generate-btn">GENERATE</a>
+                                                    <a href="generate.php?platform=reelshort&bookId=<?php echo htmlspecialchars($item['bookId']); ?>&title=<?php echo urlencode($item['title']); ?>&cover=<?php echo urlencode($item['cover']); ?>" class="generate-btn">GENERATE</a>
                                                 <?php endif; ?>
                                             </div>
                                         </div>
@@ -361,11 +324,11 @@ $existing_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
             <div class="container-fluid px-lg-5 mb-5 mt-4">
                 <div class="manual-form-container">
                     <h4>Manual Content Generation</h4>
-                    <p class="text-muted">Enter the DramaBox Book ID to fetch data directly via API.</p>
+                    <p class="text-muted">Enter the ReelShort Book ID to fetch data directly via API.</p>
                     <form action="generate.php" method="GET" class="row g-3">
-                        <input type="hidden" name="platform" value="dramabox">
+                        <input type="hidden" name="platform" value="reelshort">
                         <div class="col-md-6">
-                            <input type="text" name="bookId" class="form-control bg-dark border-secondary text-white" placeholder="Example: 41000000057" required>
+                            <input type="text" name="bookId" class="form-control bg-dark border-secondary text-white" placeholder="Example: 6994c7def370c522ef066652" required>
                         </div>
                         <div class="col-auto">
                             <button type="submit" class="btn btn-primary px-4" style="background-color: var(--primary-color); border: none;">Generate Content</button>

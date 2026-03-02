@@ -3,9 +3,13 @@ require_once '../includes/db.php';
 require_once '../includes/functions.php';
 check_admin_login();
 
+// Increase execution time for long sequential API calls
+set_time_limit(300);
+
 $bookId = $_GET['bookId'] ?? null;
 $title = $_GET['title'] ?? 'Unknown';
 $cover = $_GET['cover'] ?? '';
+$platform = $_GET['platform'] ?? 'dramabox';
 
 if (!$bookId) {
     die("Missing bookId");
@@ -13,21 +17,37 @@ if (!$bookId) {
 
 // Try to fetch better metadata from Sansekai detail API if title is unknown
 if ($title == 'Unknown' || empty($title) || empty($cover)) {
-    $detailJson = fetch_url("https://api.sansekai.my.id/api/dramabox/detail?bookId=" . $bookId);
-    if ($detailJson) {
-        $detailData = json_decode($detailJson, true);
-        if (isset($detailData['bookName'])) {
-            $title = $detailData['bookName'];
+    if ($platform === 'reelshort') {
+        $detailData = fetch_reelshort_detail($bookId);
+        if ($detailData) {
+            if (isset($detailData['bookName'])) {
+                $title = $detailData['bookName'];
+            }
+            if (isset($detailData['cover']) && empty($cover)) {
+                $cover = $detailData['cover'];
+            }
         }
-        if (isset($detailData['coverWap']) && empty($cover)) {
-            $cover = $detailData['coverWap'];
+    } else {
+        $detailJson = fetch_url("https://api.sansekai.my.id/api/dramabox/detail?bookId=" . $bookId);
+        if ($detailJson) {
+            $detailData = json_decode($detailJson, true);
+            if (isset($detailData['bookName'])) {
+                $title = $detailData['bookName'];
+            }
+            if (isset($detailData['coverWap']) && empty($cover)) {
+                $cover = $detailData['coverWap'];
+            }
         }
     }
 }
 
-$episodesData = fetch_episodes_from_api($bookId);
+if ($platform === 'reelshort') {
+    $episodesData = fetch_reelshort_episodes($bookId);
+} else {
+    $episodesData = fetch_episodes_from_api($bookId);
+}
 
-if ($episodesData && is_array($episodesData)) {
+if ($episodesData && is_array($episodesData) && !isset($episodesData['error'])) {
     try {
         $pdo->beginTransaction();
 
@@ -40,19 +60,19 @@ if ($episodesData && is_array($episodesData)) {
         }
 
         // Check if drama already exists
-        $stmt = $pdo->prepare("SELECT id FROM dramas WHERE book_id = ?");
+        $stmt = $pdo->prepare("SELECT id, platform FROM dramas WHERE book_id = ?");
         $stmt->execute([$bookId]);
         $drama = $stmt->fetch();
 
         if (!$drama) {
-            $stmt = $pdo->prepare("INSERT INTO dramas (book_id, title, cover_img) VALUES (?, ?, ?)");
-            $stmt->execute([$bookId, $title, $cover]);
+            $stmt = $pdo->prepare("INSERT INTO dramas (book_id, title, cover_img, platform) VALUES (?, ?, ?, ?)");
+            $stmt->execute([$bookId, $title, $cover, $platform]);
             $dramaId = $pdo->lastInsertId();
         } else {
             $dramaId = $drama['id'];
-            // Update title/cover if they were previously unknown/empty
-            $stmt = $pdo->prepare("UPDATE dramas SET title = ?, cover_img = ? WHERE id = ? AND (title LIKE 'Drama %' OR cover_img = '')");
-            $stmt->execute([$title, $cover, $dramaId]);
+            // Update existing record with new data and platform
+            $stmt = $pdo->prepare("UPDATE dramas SET title = ?, cover_img = ?, platform = ? WHERE id = ?");
+            $stmt->execute([$title, $cover, $platform, $dramaId]);
         }
 
         // Insert Episodes
@@ -60,24 +80,47 @@ if ($episodesData && is_array($episodesData)) {
         $sourceStmt = $pdo->prepare("INSERT INTO episode_sources (episode_id, quality, video_url) VALUES (?, ?, ?)");
 
         foreach ($episodesData as $ep) {
-            $chapterId = $ep['chapterId'] ?? '';
-            $chapterIndex = $ep['chapterIndex'] ?? 0;
-            $chapterName = $ep['chapterName'] ?? '';
-            $chapterImg = $ep['chapterImg'] ?? '';
+            if ($platform === 'reelshort') {
+                $chapterId = $ep['chapterId'] ?? '';
+                $chapterIndex = $ep['chapterIndex'] ?? 0;
+                $chapterName = $ep['chapterName'] ?? '';
+                $chapterImg = $ep['chapterImg'] ?? '';
 
-            // Find video resolutions
-            $resolutions = [];
-            if (isset($ep['cdnList'][0]['videoPathList'])) {
-                foreach ($ep['cdnList'][0]['videoPathList'] as $video) {
-                    $resolutions[] = [
-                        'quality' => $video['quality'],
-                        'videoPath' => $video['videoPath']
-                    ];
+                $resolutions = [];
+                if (isset($ep['videoList']) && is_array($ep['videoList'])) {
+                    foreach ($ep['videoList'] as $video) {
+                        $resolutions[] = [
+                            'quality' => $video['quality'] ?: 'Default',
+                            'videoPath' => $video['url']
+                        ];
+                    }
+                    // Sort by quality descending if quality is numeric
+                    usort($resolutions, function($a, $b) {
+                        $qA = (int)preg_replace('/[^0-9]/', '', $a['quality']);
+                        $qB = (int)preg_replace('/[^0-9]/', '', $b['quality']);
+                        return $qB - $qA;
+                    });
                 }
-                // Sort by quality descending
-                usort($resolutions, function($a, $b) {
-                    return $b['quality'] - $a['quality'];
-                });
+            } else {
+                $chapterId = $ep['chapterId'] ?? '';
+                $chapterIndex = $ep['chapterIndex'] ?? 0;
+                $chapterName = $ep['chapterName'] ?? '';
+                $chapterImg = $ep['chapterImg'] ?? '';
+
+                // Find video resolutions
+                $resolutions = [];
+                if (isset($ep['cdnList'][0]['videoPathList'])) {
+                    foreach ($ep['cdnList'][0]['videoPathList'] as $video) {
+                        $resolutions[] = [
+                            'quality' => $video['quality'],
+                            'videoPath' => $video['videoPath']
+                        ];
+                    }
+                    // Sort by quality descending
+                    usort($resolutions, function($a, $b) {
+                        return $b['quality'] - $a['quality'];
+                    });
+                }
             }
             $videoUrl = !empty($resolutions) ? json_encode($resolutions) : '';
 
@@ -113,7 +156,7 @@ if ($episodesData && is_array($episodesData)) {
         $error = "Error saving to database: " . $e->getMessage();
     }
 } else {
-    $error = "Failed to fetch episodes from Sansekai API.";
+    $error = $episodesData['error'] ?? "Failed to fetch episodes from Sansekai API. No data returned.";
 }
 ?>
 <!DOCTYPE html>
@@ -132,7 +175,7 @@ if ($episodesData && is_array($episodesData)) {
                 <h3>Done!</h3>
                 <p><?php echo $message; ?></p>
                 <div class="mt-4">
-                    <a href="dramabox.php" class="btn btn-outline-primary">Back to DramaBox</a>
+                    <a href="<?php echo ($platform === 'reelshort' ? 'reelshort.php' : 'dramabox.php'); ?>" class="btn btn-outline-primary">Back to <?php echo ($platform === 'reelshort' ? 'ReelShort' : 'DramaBox'); ?></a>
                     <a href="../index.php" class="btn btn-primary" target="_blank">View Site</a>
                 </div>
             </div>
@@ -141,7 +184,7 @@ if ($episodesData && is_array($episodesData)) {
                 <h3>Error</h3>
                 <p><?php echo $error; ?></p>
                 <div class="mt-4">
-                    <a href="dramabox.php" class="btn btn-primary">Try Again</a>
+                    <a href="<?php echo ($platform === 'reelshort' ? 'reelshort.php' : 'dramabox.php'); ?>" class="btn btn-primary">Try Again</a>
                 </div>
             </div>
         <?php endif; ?>
