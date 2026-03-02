@@ -20,8 +20,8 @@ if ($platform === 'reelshort') {
     if ($title == 'Unknown' || empty($title) || empty($cover)) {
         $detailData = fetch_reelshort_detail($bookId);
         if ($detailData) {
-            $title = $detailData['bookName'] ?? $title;
-            $cover = $detailData['coverWap'] ?? $detailData['cover'] ?? $cover;
+            $title = $detailData['title'] ?? $title;
+            $cover = $detailData['cover'] ?? $cover;
         }
     }
 

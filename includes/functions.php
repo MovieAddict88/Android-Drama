@@ -166,11 +166,12 @@ function search_dramabox($keyword, $page = 1) {
     if (!is_array($data)) return ['error' => 'Invalid response from search API.'];
 
     $items = [];
-    foreach ($data as $item) {
+    $searchResults = $data['results'] ?? [];
+    foreach ($searchResults as $item) {
         if (isset($item['bookId'])) {
             $items[] = [
                 'bookId' => $item['bookId'],
-                'title' => $item['bookName'] ?? 'Unknown',
+                'title' => $item['title'] ?? 'Unknown',
                 'cover' => $item['cover'] ?? ''
             ];
         }

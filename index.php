@@ -121,8 +121,12 @@ foreach ($allDramas as $drama) {
                             <a href="watch.php?id=<?php echo (int)$drama['id']; ?>" class="drama-card">
                                 <div class="drama-img-wrapper shadow">
                                     <img src="<?php echo htmlspecialchars($drama['cover_img']); ?>" class="drama-img" alt="<?php echo htmlspecialchars($drama['title']); ?>" onerror="this.src='https://via.placeholder.com/240x400?text=No+Image'">
-                                    <span class="badge bg-danger position-absolute top-0 end-0 m-2 shadow-sm" style="font-size: 0.65rem; text-transform: uppercase;">
-                                        <?php echo htmlspecialchars($drama['platform'] ?? 'dramabox'); ?>
+                                    <?php
+                                        $platform = strtolower($drama['platform'] ?? 'dramabox');
+                                        $badgeClass = ($platform === 'reelshort') ? 'bg-primary' : 'bg-danger';
+                                    ?>
+                                    <span class="badge <?php echo $badgeClass; ?> position-absolute top-0 end-0 m-2 shadow-sm" style="font-size: 0.65rem; text-transform: uppercase;">
+                                        <?php echo htmlspecialchars($platform); ?>
                                     </span>
                                 </div>
                                 <div class="drama-title"><?php echo htmlspecialchars($drama['title']); ?></div>
