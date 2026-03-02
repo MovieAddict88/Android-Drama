@@ -180,6 +180,116 @@ function search_dramabox($keyword, $page = 1) {
 }
 
 /**
+ * Scrape ReelShort website for drama list with categories
+ */
+function scrape_reelshort() {
+    $url = "https://www.reelshort.com/";
+    $html = fetch_url($url);
+    if (!$html || strpos($html, 'Error:') === 0) return ['error' => 'Failed to fetch the website. ' . $html];
+
+    $categories = [];
+
+    $startTag = '<script id="__NEXT_DATA__" type="application/json">';
+    $endTag = '</script>';
+    $start = strpos($html, $startTag);
+    if ($start !== false) {
+        $start += strlen($startTag);
+        $end = strpos($html, $endTag, $start);
+        if ($end !== false) {
+            $json = substr($html, $start, $end - $start);
+            $jsonData = json_decode($json, true);
+        $hallInfo = $jsonData['props']['pageProps']['fallback']['/api/video/hall/info'] ?? [];
+
+        if (isset($hallInfo['bookShelfList']) && is_array($hallInfo['bookShelfList'])) {
+            foreach ($hallInfo['bookShelfList'] as $shelf) {
+                // For 'Continue Watching', books might be empty but we want to skip it anyway
+                if (!empty($shelf['books']) && is_array($shelf['books'])) {
+                    $shelfItems = [];
+                    foreach ($shelf['books'] as $book) {
+                        if (isset($book['book_id'])) {
+                            $shelfItems[] = [
+                                'bookId' => $book['book_id'],
+                                'title' => $book['book_title'] ?? 'Unknown',
+                                'cover' => $book['book_pic'] ?? '',
+                                'description' => $book['special_desc'] ?? ''
+                            ];
+                        }
+                    }
+                    if (!empty($shelfItems)) {
+                        $categories[] = [
+                            'name' => $shelf['bookshelf_name'] ?? 'Recommended',
+                            'items' => $shelfItems
+                        ];
+                    }
+                }
+            }
+        }
+    } }
+
+    if (empty($categories)) {
+        return ['error' => 'No ReelShort dramas found on the page. Website structure might have changed.'];
+    }
+
+    return $categories;
+}
+
+/**
+ * Search ReelShort via Sansekai API
+ */
+function search_reelshort($keyword, $page = 1) {
+    $apiUrl = "https://api.sansekai.my.id/api/reelshort/search?query=" . urlencode($keyword) . "&page=" . (int)$page;
+    $json = fetch_url($apiUrl);
+    if (!$json) return ['error' => 'Failed to fetch ReelShort search results.'];
+
+    $data = json_decode($json, true);
+    if (!is_array($data)) return ['error' => 'Invalid response from ReelShort search API.'];
+
+    // Handle error messages from API (e.g. Forbidden/Blacklisted)
+    if (isset($data['error'])) {
+        return ['error' => $data['message'] ?? $data['error']];
+    }
+
+    $items = [];
+    foreach ($data as $item) {
+        if (isset($item['bookId'])) {
+            $items[] = [
+                'bookId' => $item['bookId'],
+                'title' => $item['bookName'] ?? 'Unknown',
+                'cover' => $item['cover'] ?? ''
+            ];
+        }
+    }
+
+    return $items;
+}
+
+/**
+ * Fetch ReelShort drama detail via Sansekai API
+ */
+function fetch_reelshort_detail($bookId) {
+    $apiUrl = "https://api.sansekai.my.id/api/reelshort/detail?bookId=" . $bookId;
+    $json = fetch_url($apiUrl);
+    if (!$json) return null;
+
+    $data = json_decode($json, true);
+    if (isset($data['error'])) return null;
+    return $data;
+}
+
+/**
+ * Fetch ReelShort episode via Sansekai API
+ */
+function fetch_reelshort_episode($bookId, $episodeNumber) {
+    $apiUrl = "https://api.sansekai.my.id/api/reelshort/episode?bookId=$bookId&episodeNumber=$episodeNumber";
+    $json = fetch_url($apiUrl);
+    if (!$json) return null;
+
+    $data = json_decode($json, true);
+    if (isset($data['error'])) return $data; // Return error data so generate.php can handle it
+    return $data;
+}
+
+/**
  * Fetch all episodes for a given bookId from the Sansekai API
  */
 function fetch_episodes_from_api($bookId) {
