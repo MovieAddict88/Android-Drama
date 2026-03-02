@@ -89,7 +89,10 @@ $episodes = $stmt->fetchAll();
             <a class="navbar-brand fw-bold" href="index.php"><span style="color: var(--primary-color);">DRAMA</span>ADMIN</a>
             <div class="collapse navbar-collapse">
                 <ul class="navbar-nav me-auto">
-                    <li class="nav-item"><a class="nav-link" href="manage.php">Back to Manage</a></li>
+                    <li class="nav-item"><a class="nav-link" href="index.php">Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link" href="dramabox.php">DramaBox</a></li>
+                    <li class="nav-item"><a class="nav-link" href="reelshort.php">ReelShort</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="manage.php">Manage</a></li>
                 </ul>
             </div>
         </div>
@@ -119,7 +122,7 @@ $episodes = $stmt->fetchAll();
                     <p class="text-muted small mb-0">Book ID: <?php echo htmlspecialchars($drama['book_id']); ?> | Total: <?php echo count($episodes); ?> Episodes</p>
                 </div>
                 <div>
-                    <a href="generate.php?bookId=<?php echo $drama['book_id']; ?>" class="btn btn-outline-primary">
+                    <a href="generate.php?bookId=<?php echo $drama['book_id']; ?>&platform=<?php echo $drama['platform'] ?? 'dramabox'; ?>" class="btn btn-outline-primary">
                         <i class="bi bi-arrow-repeat me-1"></i> Refresh/Regenerate
                     </a>
                 </div>

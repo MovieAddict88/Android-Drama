@@ -44,6 +44,11 @@ if ($platform === 'reelshort') {
         }
         $episodeNumber++;
         if ($episodeNumber > 200) break; // Safety limit
+
+        // Check for suspicious/blocked API response early
+        if (isset($ep['error']) && ($ep['error'] === 'Forbidden' || strpos($ep['message'] ?? '', 'blacklist') !== false)) {
+            break;
+        }
     }
 } else {
     // DramaBox logic
@@ -150,7 +155,9 @@ if ($episodesData && is_array($episodesData)) {
     }
 } else {
     $error = "Failed to fetch episodes from Sansekai API. Platform: $platform, Book ID: $bookId";
-    if (isset($ep['error'])) $error .= " API Error: " . $ep['message'];
+    if (isset($ep['error'])) {
+        $error .= "<br><br><div class='alert alert-custom p-3'><i class='bi bi-exclamation-octagon-fill me-2'></i> <strong>API ERROR:</strong> " . htmlspecialchars($ep['message'] ?? $ep['error']) . "</div>";
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -160,6 +167,15 @@ if ($episodesData && is_array($episodesData)) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Generating Content - Drama Admin</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        .alert-custom {
+            background-color: rgba(255, 0, 85, 0.1);
+            border: 1px solid #ff0055;
+            color: #ff0055;
+            border-radius: 12px;
+        }
+    </style>
 </head>
 <body class="bg-light">
     <div class="container py-5 text-center">

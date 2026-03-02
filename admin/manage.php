@@ -112,6 +112,21 @@ foreach ($dramas as $drama) {
         .drama-card:hover .card-overlay {
             opacity: 1;
         }
+        .platform-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 2;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            font-weight: 800;
+            padding: 4px 8px;
+            border-radius: 4px;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+        }
+        .badge-dramabox { background-color: #ff0055; color: white; }
+        .badge-reelshort { background-color: #3498db; color: white; }
         .card-body {
             padding: 12px;
         }
@@ -146,7 +161,8 @@ foreach ($dramas as $drama) {
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item"><a class="nav-link" href="index.php">Dashboard</a></li>
-                    <li class="nav-item"><a class="nav-link" href="dramabox.php">Browse DramaBox</a></li>
+                    <li class="nav-item"><a class="nav-link" href="dramabox.php">DramaBox</a></li>
+                    <li class="nav-item"><a class="nav-link" href="reelshort.php">ReelShort</a></li>
                     <li class="nav-item"><a class="nav-link active" href="manage.php">Manage</a></li>
                 </ul>
                 <div class="d-flex align-items-center">
@@ -200,6 +216,9 @@ foreach ($dramas as $drama) {
                                 <div class="col">
                                     <div class="drama-card">
                                         <div class="card-img-container shadow">
+                                            <span class="platform-badge badge-<?php echo strtolower($item['platform'] ?? 'dramabox'); ?>">
+                                                <?php echo htmlspecialchars($item['platform'] ?? 'dramabox'); ?>
+                                            </span>
                                             <img src="<?php echo htmlspecialchars($item['cover_img']); ?>" alt="<?php echo htmlspecialchars($item['title']); ?>" loading="lazy" onerror="this.src='https://via.placeholder.com/240x400?text=No+Image'">
                                             <div class="card-overlay">
                                                 <a href="manage_episodes.php?drama_id=<?php echo $item['id']; ?>" class="btn btn-primary btn-sm action-btn">

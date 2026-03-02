@@ -209,7 +209,8 @@ $existing_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item"><a class="nav-link" href="index.php">Dashboard</a></li>
-                    <li class="nav-item"><a class="nav-link active" href="dramabox.php">Browse DramaBox</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="dramabox.php">DramaBox</a></li>
+                    <li class="nav-item"><a class="nav-link" href="reelshort.php">ReelShort</a></li>
                     <li class="nav-item"><a class="nav-link" href="manage.php">Manage</a></li>
                 </ul>
                 <div class="d-flex align-items-center flex-wrap gap-2 py-2 py-lg-0">

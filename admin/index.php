@@ -45,6 +45,7 @@ $episode_count = $stmt->fetchColumn();
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item"><a class="nav-link active" href="index.php">Dashboard</a></li>
                     <li class="nav-item"><a class="nav-link" href="dramabox.php">DramaBox</a></li>
+                    <li class="nav-item"><a class="nav-link" href="reelshort.php">ReelShort</a></li>
                     <li class="nav-item"><a class="nav-link" href="manage.php">Manage</a></li>
                 </ul>
                 <ul class="navbar-nav ms-auto">
