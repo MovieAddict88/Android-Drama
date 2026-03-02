@@ -60,7 +60,7 @@ if ($episodesData && is_array($episodesData) && !isset($episodesData['error'])) 
         }
 
         // Check if drama already exists
-        $stmt = $pdo->prepare("SELECT id FROM dramas WHERE book_id = ?");
+        $stmt = $pdo->prepare("SELECT id, platform FROM dramas WHERE book_id = ?");
         $stmt->execute([$bookId]);
         $drama = $stmt->fetch();
 
@@ -70,8 +70,8 @@ if ($episodesData && is_array($episodesData) && !isset($episodesData['error'])) 
             $dramaId = $pdo->lastInsertId();
         } else {
             $dramaId = $drama['id'];
-            // Update title/cover/platform if they were previously unknown/empty
-            $stmt = $pdo->prepare("UPDATE dramas SET title = ?, cover_img = ?, platform = ? WHERE id = ? AND (title LIKE 'Drama %' OR cover_img = '')");
+            // Update existing record with new data and platform
+            $stmt = $pdo->prepare("UPDATE dramas SET title = ?, cover_img = ?, platform = ? WHERE id = ?");
             $stmt->execute([$title, $cover, $platform, $dramaId]);
         }
 

@@ -136,6 +136,8 @@ function fetch_reelshort_episodes($bookId) {
         $index = $chapter['index'];
         $apiUrl = "https://api.sansekai.my.id/api/reelshort/episode?bookId=" . $bookId . "&episodeNumber=" . $index;
         $json = fetch_url($apiUrl);
+        // Throttle to prevent IP blacklist
+        sleep(1);
         if ($json) {
             $epData = json_decode($json, true);
             if ($epData && isset($epData['videoList'])) {

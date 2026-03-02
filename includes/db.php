@@ -53,6 +53,9 @@ try {
             }
         }
     }
+
+    // Ensure platform is set for all records
+    $pdo->exec("UPDATE dramas SET platform = 'dramabox' WHERE platform IS NULL OR platform = ''");
 } catch (PDOException $e) {
     die("Connection failed: " . $e->getMessage());
 }
