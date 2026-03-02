@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS dramas (
     title VARCHAR(255) NOT NULL,
     description TEXT,
     cover_img VARCHAR(255),
+    category VARCHAR(100),
     platform VARCHAR(50) DEFAULT 'dramabox',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

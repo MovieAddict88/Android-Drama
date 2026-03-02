@@ -45,6 +45,7 @@ $episode_count = $stmt->fetchColumn();
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item"><a class="nav-link active" href="index.php">Dashboard</a></li>
                     <li class="nav-item"><a class="nav-link" href="dramabox.php">DramaBox</a></li>
+                    <li class="nav-item"><a class="nav-link" href="manage.php">Manage</a></li>
                 </ul>
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item"><span class="nav-link text-white">Hello, <?php echo $_SESSION['admin_user']; ?></span></li>
@@ -71,6 +72,16 @@ $episode_count = $stmt->fetchColumn();
                         <h2 class="mb-0"><?php echo $episode_count; ?></h2>
                     </div>
                 </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <a href="manage.php" class="text-decoration-none">
+                    <div class="card bg-primary text-white shadow-sm border-0 h-100">
+                        <div class="card-body d-flex flex-column align-items-center justify-content-center">
+                            <i class="bi bi-gear-fill fs-2 mb-2"></i>
+                            <h6 class="text-uppercase mb-0">Manage Dramas</h6>
+                        </div>
+                    </div>
+                </a>
             </div>
         </div>
 

@@ -22,19 +22,28 @@ try {
     $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 
     // Self-healing database: Ensure all tables exist
-    try {
-        $pdo->query("SELECT 1 FROM episode_sources LIMIT 1");
-    } catch (Exception $e) {
-        $schemaPath = dirname(__DIR__) . '/database/schema.sql';
-        if (file_exists($schemaPath)) {
-            $sql = file_get_contents($schemaPath);
-            // Handle multiple statements (MySQL and SQLite have different requirements for exec())
-            $isSqlite = (defined('DB_TYPE') && DB_TYPE === 'sqlite') || (defined('DB_HOST') && strpos(DB_HOST, 'sqlite') !== false);
-            if ($isSqlite) {
+    $tables = ['users', 'dramas', 'episodes', 'episode_sources'];
+    foreach ($tables as $table) {
+        try {
+            $pdo->query("SELECT 1 FROM $table LIMIT 1");
+        } catch (Exception $e) {
+            $schemaPath = dirname(__DIR__) . '/database/schema.sql';
+            if (file_exists($schemaPath)) {
+                $sql = file_get_contents($schemaPath);
                 $pdo->exec($sql);
-            } else {
-                $pdo->exec($sql);
+                break;
             }
+        }
+    }
+
+    // Check for missing columns (Self-healing)
+    try {
+        $pdo->query("SELECT category FROM dramas LIMIT 1");
+    } catch (Exception $e) {
+        try {
+            $pdo->exec("ALTER TABLE dramas ADD COLUMN category VARCHAR(100)");
+        } catch (Exception $e2) {
+            // Column might already exist or table doesn't exist yet
         }
     }
 } catch (PDOException $e) {
