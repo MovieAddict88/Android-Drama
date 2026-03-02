@@ -57,6 +57,7 @@ if ($episodesData && is_array($episodesData)) {
 
         // Insert Episodes
         $stmt = $pdo->prepare("INSERT INTO episodes (drama_id, chapter_id, chapter_index, chapter_name, video_url, chapter_img) VALUES (?, ?, ?, ?, ?, ?)");
+        $sourceStmt = $pdo->prepare("INSERT INTO episode_sources (episode_id, quality, video_url) VALUES (?, ?, ?)");
 
         foreach ($episodesData as $ep) {
             $chapterId = $ep['chapterId'] ?? '';
@@ -64,22 +65,44 @@ if ($episodesData && is_array($episodesData)) {
             $chapterName = $ep['chapterName'] ?? '';
             $chapterImg = $ep['chapterImg'] ?? '';
 
-            // Find video URL - picking the best quality available
-            $videoUrl = '';
+            // Find video resolutions
+            $resolutions = [];
             if (isset($ep['cdnList'][0]['videoPathList'])) {
-                $videoList = $ep['cdnList'][0]['videoPathList'];
+                foreach ($ep['cdnList'][0]['videoPathList'] as $video) {
+                    $resolutions[] = [
+                        'quality' => $video['quality'],
+                        'videoPath' => $video['videoPath']
+                    ];
+                }
                 // Sort by quality descending
-                usort($videoList, function($a, $b) {
+                usort($resolutions, function($a, $b) {
                     return $b['quality'] - $a['quality'];
                 });
-                $videoUrl = $videoList[0]['videoPath'] ?? '';
             }
+            $videoUrl = !empty($resolutions) ? json_encode($resolutions) : '';
 
             // Check if episode already exists
             $checkStmt = $pdo->prepare("SELECT id FROM episodes WHERE drama_id = ? AND chapter_id = ?");
             $checkStmt->execute([$dramaId, $chapterId]);
-            if (!$checkStmt->fetch()) {
+            $episode = $checkStmt->fetch();
+
+            if (!$episode) {
                 $stmt->execute([$dramaId, $chapterId, $chapterIndex, $chapterName, $videoUrl, $chapterImg]);
+                $episodeId = $pdo->lastInsertId();
+            } else {
+                $episodeId = $episode['id'];
+                // Update existing video_url JSON just in case it was a legacy record
+                $updateStmt = $pdo->prepare("UPDATE episodes SET video_url = ? WHERE id = ?");
+                $updateStmt->execute([$videoUrl, $episodeId]);
+            }
+
+            // Populate episode_sources table
+            if (!empty($resolutions)) {
+                // Clear old sources to avoid duplicates on regenerate
+                $pdo->prepare("DELETE FROM episode_sources WHERE episode_id = ?")->execute([$episodeId]);
+                foreach ($resolutions as $res) {
+                    $sourceStmt->execute([$episodeId, $res['quality'], $res['videoPath']]);
+                }
             }
         }
 

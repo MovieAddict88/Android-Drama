@@ -53,9 +53,12 @@ if (!$currentEpisode && !empty($episodes)) {
         .ep-item { padding: 10px; border-bottom: 1px solid #333; cursor: pointer; text-decoration: none; color: white; display: block; }
         .ep-item:hover { background-color: #333; }
         .ep-item.active { background-color: #0d6efd; }
-        .video-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; background-color: #000; border-radius: 8px; }
+        .video-container { position: relative; padding-bottom: 177.77%; height: 0; overflow: hidden; background-color: #000; border-radius: 8px; max-width: 450px; margin: 0 auto; }
         .video-container video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
         .drama-header { background: linear-gradient(rgba(0,0,0,0.8), rgba(18,18,18,1)), url('<?php echo htmlspecialchars($drama['cover_img']); ?>'); background-size: cover; background-position: center; padding: 60px 0; margin-bottom: 30px; }
+        .quality-selector { position: absolute; top: 10px; right: 10px; z-index: 10; }
+        .quality-btn { background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); color: white; font-size: 0.8rem; padding: 2px 8px; border-radius: 4px; backdrop-filter: blur(4px); }
+        .quality-btn:hover { background: rgba(255,255,255,0.1); color: white; }
     </style>
 </head>
 <body>
@@ -96,9 +99,39 @@ if (!$currentEpisode && !empty($episodes)) {
         <div class="row">
             <div class="col-lg-8">
                 <?php if ($currentEpisode): ?>
-                    <div class="video-container mb-3 shadow">
-                        <video controls poster="<?php echo htmlspecialchars($currentEpisode['chapter_img']); ?>" playsinline>
-                            <source src="<?php echo htmlspecialchars($currentEpisode['video_url']); ?>" type="video/mp4">
+                    <?php
+                    // Fetch sources from new table first
+                    $sourceStmt = $pdo->prepare("SELECT quality, video_url as videoPath FROM episode_sources WHERE episode_id = ? ORDER BY CAST(quality AS UNSIGNED) DESC");
+                    $sourceStmt->execute([$currentEpisode['id']]);
+                    $sources = $sourceStmt->fetchAll();
+
+                    if (empty($sources)) {
+                        // Fallback to video_url column (JSON or single URL)
+                        $videoData = json_decode($currentEpisode['video_url'], true);
+                        if (is_array($videoData)) {
+                            $sources = $videoData;
+                        } else {
+                            // Legacy support for single URL string
+                            $sources = [['quality' => 'Default', 'videoPath' => $currentEpisode['video_url']]];
+                        }
+                    }
+                    $defaultSource = $sources[0]['videoPath'] ?? '';
+                    ?>
+                    <div class="video-container mb-3 shadow position-relative">
+                        <?php if (count($sources) > 1): ?>
+                            <div class="quality-selector dropdown">
+                                <button class="quality-btn dropdown-toggle" type="button" id="qualityDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="bi bi-gear-fill me-1"></i> <span id="current-quality"><?php echo is_numeric($sources[0]['quality']) ? $sources[0]['quality'] . 'p' : $sources[0]['quality']; ?></span>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end" aria-labelledby="qualityDropdown">
+                                    <?php foreach ($sources as $source): ?>
+                                        <li><a class="dropdown-item small" href="#" onclick="changeQuality('<?php echo $source['videoPath']; ?>', '<?php echo $source['quality']; ?>'); return false;"><?php echo is_numeric($source['quality']) ? $source['quality'] . 'p' : $source['quality']; ?></a></li>
+                                    <?php endforeach; ?>
+                                </ul>
+                            </div>
+                        <?php endif; ?>
+                        <video id="main-video" controls poster="<?php echo htmlspecialchars($currentEpisode['chapter_img']); ?>" playsinline>
+                            <source src="<?php echo htmlspecialchars($defaultSource); ?>" type="video/mp4">
                             Your browser does not support the video tag.
                         </video>
                     </div>
@@ -149,5 +182,26 @@ if (!$currentEpisode && !empty($episodes)) {
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function changeQuality(url, quality) {
+            const video = document.getElementById('main-video');
+            const currentTime = video.currentTime;
+            const isPaused = video.paused;
+
+            // Create a new source element to ensure the browser switches correctly
+            video.src = url;
+            video.load();
+
+            video.onloadedmetadata = function() {
+                video.currentTime = currentTime;
+                if (!isPaused) {
+                    video.play();
+                }
+                video.onloadedmetadata = null;
+            };
+
+            document.getElementById('current-quality').innerText = isNaN(quality) ? quality : quality + 'p';
+        }
+    </script>
 </body>
 </html>
