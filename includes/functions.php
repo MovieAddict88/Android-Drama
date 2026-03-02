@@ -163,8 +163,14 @@ function scrape_dramabox() {
     $categories = [];
 
     // Attempt to parse JSON from __NEXT_DATA__ for more accurate info
-    if (preg_match('/<script id="__NEXT_DATA__" type="application\/json">(.*?)<\/script>/', $html, $scriptMatches)) {
-        $jsonData = json_decode($scriptMatches[1], true);
+    $start_marker = '<script id="__NEXT_DATA__" type="application/json">';
+    $end_marker = '</script>';
+    $start_pos = strpos($html, $start_marker);
+    if ($start_pos !== false) {
+        $start_pos += strlen($start_marker);
+        $end_pos = strpos($html, $end_marker, $start_pos);
+        $json_str = substr($html, $start_pos, $end_pos - $start_pos);
+        $jsonData = json_decode($json_str, true);
         $pageProps = $jsonData['props']['pageProps'] ?? [];
 
         // Check for bigList (Featured/Hero)
@@ -287,6 +293,7 @@ function search_dramabox($keyword, $page = 1) {
     if (!$json) return ['error' => 'Failed to fetch search results.'];
 
     $data = json_decode($json, true);
+    if (isset($data['error'])) return ['error' => $data['message'] ?? $data['error']];
     if (!is_array($data)) return ['error' => 'Invalid response from search API.'];
 
     $items = [];
@@ -309,9 +316,12 @@ function search_dramabox($keyword, $page = 1) {
 function fetch_episodes_from_api($bookId) {
     $apiUrl = "https://api.sansekai.my.id/api/dramabox/allepisode?bookId=" . $bookId;
     $json = fetch_url($apiUrl);
-    if (!$json) return null;
+    if (!$json) return ['error' => 'Failed to fetch episodes.'];
 
-    return json_decode($json, true);
+    $data = json_decode($json, true);
+    if (isset($data['error'])) return ['error' => $data['message'] ?? $data['error']];
+
+    return $data;
 }
 
 /**

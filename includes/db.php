@@ -37,13 +37,20 @@ try {
     }
 
     // Check for missing columns (Self-healing)
-    try {
-        $pdo->query("SELECT category FROM dramas LIMIT 1");
-    } catch (Exception $e) {
+    $columns_to_check = [
+        'category' => "ALTER TABLE dramas ADD COLUMN category VARCHAR(100)",
+        'platform' => "ALTER TABLE dramas ADD COLUMN platform VARCHAR(50) DEFAULT 'dramabox'"
+    ];
+
+    foreach ($columns_to_check as $column => $alter_sql) {
         try {
-            $pdo->exec("ALTER TABLE dramas ADD COLUMN category VARCHAR(100)");
-        } catch (Exception $e2) {
-            // Column might already exist or table doesn't exist yet
+            $pdo->query("SELECT $column FROM dramas LIMIT 1");
+        } catch (Exception $e) {
+            try {
+                $pdo->exec($alter_sql);
+            } catch (Exception $e2) {
+                // Column might already exist or table doesn't exist yet
+            }
         }
     }
 } catch (PDOException $e) {

@@ -1,16 +1,4 @@
-[Mon Mar  2 08:32:24 2026] PHP 8.3.6 Development Server (http://localhost:8000) started
-[Mon Mar  2 08:32:27 2026] [::1]:55982 Accepted
-[Mon Mar  2 08:32:27 2026] [::1]:55982 [302]: GET /admin/index.php
-[Mon Mar  2 08:32:27 2026] [::1]:55982 Closing
-[Mon Mar  2 08:32:27 2026] [::1]:55990 Accepted
-[Mon Mar  2 08:32:27 2026] [::1]:55990 [200]: GET /admin/login.php
-[Mon Mar  2 08:32:27 2026] [::1]:55990 Closing
-[Mon Mar  2 08:32:28 2026] [::1]:55996 Accepted
-[Mon Mar  2 08:32:28 2026] [::1]:55996 [302]: GET /admin/reelshort.php
-[Mon Mar  2 08:32:28 2026] [::1]:55996 Closing
-[Mon Mar  2 08:32:28 2026] [::1]:56004 Accepted
-[Mon Mar  2 08:32:28 2026] [::1]:56004 [200]: GET /admin/login.php
-[Mon Mar  2 08:32:28 2026] [::1]:56004 Closing
-[Mon Mar  2 08:32:28 2026] [::1]:56018 Accepted
-[Mon Mar  2 08:32:28 2026] [::1]:56018 [200]: GET /index.php
-[Mon Mar  2 08:32:28 2026] [::1]:56018 Closing
+[Mon Mar  2 09:41:28 2026] PHP 8.3.6 Development Server (http://localhost:8000) started
+[Mon Mar  2 09:41:30 2026] [::1]:52756 Accepted
+[Mon Mar  2 09:41:30 2026] [::1]:52756 [200]: GET /index.php
+[Mon Mar  2 09:41:30 2026] [::1]:52756 Closing

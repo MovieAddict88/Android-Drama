@@ -3,6 +3,9 @@ require_once '../includes/db.php';
 require_once '../includes/functions.php';
 check_admin_login();
 
+// Increase execution time for long sequential API calls
+set_time_limit(300);
+
 $bookId = $_GET['bookId'] ?? null;
 $title = $_GET['title'] ?? 'Unknown';
 $cover = $_GET['cover'] ?? '';
@@ -44,7 +47,7 @@ if ($platform === 'reelshort') {
     $episodesData = fetch_episodes_from_api($bookId);
 }
 
-if ($episodesData && is_array($episodesData)) {
+if ($episodesData && is_array($episodesData) && !isset($episodesData['error'])) {
     try {
         $pdo->beginTransaction();
 
@@ -91,6 +94,12 @@ if ($episodesData && is_array($episodesData)) {
                             'videoPath' => $video['url']
                         ];
                     }
+                    // Sort by quality descending if quality is numeric
+                    usort($resolutions, function($a, $b) {
+                        $qA = (int)preg_replace('/[^0-9]/', '', $a['quality']);
+                        $qB = (int)preg_replace('/[^0-9]/', '', $b['quality']);
+                        return $qB - $qA;
+                    });
                 }
             } else {
                 $chapterId = $ep['chapterId'] ?? '';
@@ -147,7 +156,7 @@ if ($episodesData && is_array($episodesData)) {
         $error = "Error saving to database: " . $e->getMessage();
     }
 } else {
-    $error = "Failed to fetch episodes from Sansekai API.";
+    $error = $episodesData['error'] ?? "Failed to fetch episodes from Sansekai API. No data returned.";
 }
 ?>
 <!DOCTYPE html>
