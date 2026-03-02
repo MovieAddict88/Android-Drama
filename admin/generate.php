@@ -17,19 +17,23 @@ $episodesData = [];
 
 if ($platform === 'reelshort') {
     $detailData = fetch_reelshort_detail($bookId);
-    if ($detailData && isset($detailData['success']) && $detailData['success']) {
-        $title = !empty($detailData['title']) ? $detailData['title'] : $title;
-        $cover = !empty($detailData['cover']) ? $detailData['cover'] : $cover;
-        $description = $detailData['description'] ?? '';
+    if ($detailData && !isset($detailData['error'])) {
+        $data = $detailData;
 
-        if (isset($detailData['chapters']) && is_array($detailData['chapters'])) {
-            foreach ($detailData['chapters'] as $chapter) {
+        $title = !empty($data['title']) ? $data['title'] : $title;
+        $cover = !empty($data['cover']) ? $data['cover'] : $cover;
+        $description = $data['description'] ?? '';
+
+        if (isset($data['chapters']) && is_array($data['chapters'])) {
+            foreach ($data['chapters'] as $chapter) {
                 // For ReelShort we need to fetch each episode's video URL
                 $epInfo = fetch_reelshort_episode($bookId, $chapter['index']);
-                if ($epInfo && isset($epInfo['success']) && $epInfo['success']) {
+
+                if ($epInfo && !isset($epInfo['error'])) {
+                    $epData = $epInfo;
                     $resolutions = [];
-                    if (isset($epInfo['videoList'])) {
-                        foreach ($epInfo['videoList'] as $video) {
+                    if (isset($epData['videoList'])) {
+                        foreach ($epData['videoList'] as $video) {
                             $resolutions[] = [
                                 'quality' => $video['quality'],
                                 'videoPath' => $video['url']
@@ -41,12 +45,14 @@ if ($platform === 'reelshort') {
                         'chapterId' => $chapter['chapterId'],
                         'chapterIndex' => $chapter['index'] - 1, // Store as 0-indexed
                         'chapterName' => $chapter['title'],
-                        'chapterImg' => $cover, // ReelShort detail doesn't seem to have per-episode images in the list
+                        'chapterImg' => $cover,
                         'resolutions' => $resolutions
                     ];
                 }
             }
         }
+    } else {
+        $error = "ReelShort Detail API Error: " . ($detailData['error'] ?? 'Unknown error');
     }
 } else {
     // DramaBox logic
@@ -159,8 +165,8 @@ if (!empty($episodesData)) {
         $pdo->rollBack();
         $error = "Error saving to database: " . $e->getMessage();
     }
-} else {
-    $error = "Failed to fetch episodes from Sansekai API.";
+} elseif (!isset($error)) {
+    $error = "Failed to fetch episodes from Sansekai API. No episode data found.";
 }
 ?>
 <!DOCTYPE html>
@@ -179,7 +185,7 @@ if (!empty($episodesData)) {
                 <h3>Done!</h3>
                 <p><?php echo $message; ?></p>
                 <div class="mt-4">
-                    <a href="dramabox.php" class="btn btn-outline-primary">Back to DramaBox</a>
+                    <a href="<?php echo ($platform === 'reelshort' ? 'reelshort.php' : 'dramabox.php'); ?>" class="btn btn-outline-primary">Back to <?php echo ($platform === 'reelshort' ? 'ReelShort' : 'DramaBox'); ?></a>
                     <a href="../index.php" class="btn btn-primary" target="_blank">View Site</a>
                 </div>
             </div>
@@ -188,7 +194,7 @@ if (!empty($episodesData)) {
                 <h3>Error</h3>
                 <p><?php echo $error; ?></p>
                 <div class="mt-4">
-                    <a href="dramabox.php" class="btn btn-primary">Try Again</a>
+                    <a href="<?php echo ($platform === 'reelshort' ? 'reelshort.php' : 'dramabox.php'); ?>" class="btn btn-primary">Try Again</a>
                 </div>
             </div>
         <?php endif; ?>

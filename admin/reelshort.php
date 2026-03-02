@@ -195,11 +195,19 @@ $existing_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
             <div class="section-container mb-5">
                 <div class="section-header px-lg-5">
                     <h2 class="section-title">Search Results for "<?php echo htmlspecialchars($search_query); ?>"</h2>
-                    <span class="text-muted small"><?php echo is_array($search_results) ? count($search_results) : 0; ?> Results</span>
+                    <span class="text-muted small"><?php echo (is_array($search_results) && !isset($search_results['error'])) ? count($search_results) : 0; ?> Results</span>
                 </div>
                 <div class="container-fluid px-lg-5">
                     <?php if (isset($search_results['error'])): ?>
-                        <div class="alert alert-custom p-4"><?php echo $search_results['error']; ?></div>
+                        <div class="alert alert-danger p-4 shadow-sm border-0 rounded-4">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-exclamation-octagon-fill me-3 fs-3"></i>
+                                <div>
+                                    <h5 class="mb-1 fw-bold">Search API Error</h5>
+                                    <p class="mb-0 opacity-75"><?php echo htmlspecialchars($search_results['error']); ?></p>
+                                </div>
+                            </div>
+                        </div>
                     <?php elseif (empty($search_results)): ?>
                         <div class="alert alert-custom p-4">No results found for "<?php echo htmlspecialchars($search_query); ?>"</div>
                     <?php else: ?>
@@ -213,7 +221,7 @@ $existing_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
                                                 <?php if (in_array($item['bookId'], $existing_ids)): ?>
                                                     <span class="generate-btn btn-generated">DONE</span>
                                                 <?php else: ?>
-                                                    <a href="generate.php?platform=reelshort&bookId=<?php echo $item['bookId']; ?>&title=<?php echo urlencode($item['title']); ?>&cover=<?php echo urlencode($item['cover']); ?>" class="generate-btn">GENERATE</a>
+                                                    <a href="generate.php?platform=reelshort&bookId=<?php echo $item['bookId']; ?>&title=<?php echo urlencode($item['title'] ?? ''); ?>&cover=<?php echo urlencode($item['cover'] ?? ''); ?>" class="generate-btn">GENERATE</a>
                                                 <?php endif; ?>
                                             </div>
                                         </div>
@@ -265,11 +273,11 @@ $existing_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
         </main>
     <?php elseif (isset($categories['error'])): ?>
         <div class="container mt-5">
-            <div class="alert alert-custom p-4 shadow">
+            <div class="alert alert-danger p-4 shadow-sm border-0 rounded-4">
                 <div class="d-flex align-items-center">
-                    <i class="bi bi-exclamation-triangle-fill me-3 fs-2" style="color: var(--primary-color);"></i>
+                    <i class="bi bi-exclamation-triangle-fill me-3 fs-3"></i>
                     <div>
-                        <h5 class="mb-1">Scraping limit reached or structure changed</h5>
+                        <h5 class="mb-1 fw-bold">Scraping limit reached or structure changed</h5>
                         <p class="mb-0 opacity-75"><?php echo htmlspecialchars($categories['error']); ?></p>
                     </div>
                 </div>
@@ -308,7 +316,7 @@ $existing_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
                                                 <?php if (in_array($item['bookId'], $existing_ids)): ?>
                                                     <span class="generate-btn btn-generated">DONE</span>
                                                 <?php else: ?>
-                                                    <a href="generate.php?platform=reelshort&bookId=<?php echo $item['bookId']; ?>&title=<?php echo urlencode($item['title']); ?>&cover=<?php echo urlencode($item['cover']); ?>" class="generate-btn">GENERATE</a>
+                                                    <a href="generate.php?platform=reelshort&bookId=<?php echo $item['bookId']; ?>&title=<?php echo urlencode($item['title'] ?? ''); ?>&cover=<?php echo urlencode($item['cover'] ?? ''); ?>" class="generate-btn">GENERATE</a>
                                                 <?php endif; ?>
                                             </div>
                                         </div>
