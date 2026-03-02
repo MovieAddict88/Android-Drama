@@ -100,13 +100,20 @@ if (!$currentEpisode && !empty($episodes)) {
             <div class="col-lg-8">
                 <?php if ($currentEpisode): ?>
                     <?php
-                    $videoData = json_decode($currentEpisode['video_url'], true);
-                    $sources = [];
-                    if (is_array($videoData)) {
-                        $sources = $videoData;
-                    } else {
-                        // Legacy support for single URL string
-                        $sources = [['quality' => 'Default', 'videoPath' => $currentEpisode['video_url']]];
+                    // Fetch sources from new table first
+                    $sourceStmt = $pdo->prepare("SELECT quality, video_url as videoPath FROM episode_sources WHERE episode_id = ? ORDER BY CAST(quality AS UNSIGNED) DESC");
+                    $sourceStmt->execute([$currentEpisode['id']]);
+                    $sources = $sourceStmt->fetchAll();
+
+                    if (empty($sources)) {
+                        // Fallback to video_url column (JSON or single URL)
+                        $videoData = json_decode($currentEpisode['video_url'], true);
+                        if (is_array($videoData)) {
+                            $sources = $videoData;
+                        } else {
+                            // Legacy support for single URL string
+                            $sources = [['quality' => 'Default', 'videoPath' => $currentEpisode['video_url']]];
+                        }
                     }
                     $defaultSource = $sources[0]['videoPath'] ?? '';
                     ?>

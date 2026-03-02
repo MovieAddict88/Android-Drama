@@ -26,3 +26,12 @@ CREATE TABLE IF NOT EXISTS episodes (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (drama_id) REFERENCES dramas(id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS episode_sources (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    episode_id INT NOT NULL,
+    quality VARCHAR(20),
+    video_url TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (episode_id) REFERENCES episodes(id) ON DELETE CASCADE
+);
