@@ -29,6 +29,113 @@ function fetch_url($url) {
 }
 
 /**
+ * Scrape ReelShort website for drama list with categories
+ */
+function scrape_reelshort() {
+    $url = "https://www.reelshort.com/";
+    $html = fetch_url($url);
+    if (!$html || strpos($html, 'Error:') === 0) return ['error' => 'Failed to fetch the website. ' . $html];
+
+    $categories = [];
+
+    $start_marker = '<script id="__NEXT_DATA__" type="application/json">';
+    $end_marker = '</script>';
+    $start_pos = strpos($html, $start_marker);
+    if ($start_pos !== false) {
+        $start_pos += strlen($start_marker);
+        $end_pos = strpos($html, $end_marker, $start_pos);
+        $json_str = substr($html, $start_pos, $end_pos - $start_pos);
+        $jsonData = json_decode($json_str, true);
+        $fallback = $jsonData['props']['pageProps']['fallback'] ?? [];
+
+        // Find the hall info key which might vary or be specific
+        $hallInfo = null;
+        foreach ($fallback as $key => $value) {
+            if (strpos($key, '/api/video/hall/info') !== false) {
+                $hallInfo = $value;
+                break;
+            }
+        }
+
+        if ($hallInfo && isset($hallInfo['bookShelfList'])) {
+            foreach ($hallInfo['bookShelfList'] as $shelf) {
+                if (!empty($shelf['books'])) {
+                    $items = [];
+                    foreach ($shelf['books'] as $book) {
+                        $items[] = [
+                            'bookId' => $book['book_id'] ?? '',
+                            'title' => $book['book_name'] ?? 'Unknown',
+                            'cover' => $book['cover'] ?? '',
+                            'description' => $book['introduction'] ?? ''
+                        ];
+                    }
+                    if (!empty($items)) {
+                        $categories[] = [
+                            'name' => $shelf['bookshelf_name'] ?? 'Recommended',
+                            'items' => $items
+                        ];
+                    }
+                }
+            }
+        }
+    }
+
+    if (empty($categories)) {
+        return ['error' => 'No dramas found on the page. Website structure might have changed.'];
+    }
+
+    return $categories;
+}
+
+/**
+ * Search ReelShort via Sansekai API
+ */
+function search_reelshort($keyword, $page = 1) {
+    $apiUrl = "https://api.sansekai.my.id/api/reelshort/search?query=" . urlencode($keyword) . "&page=" . (int)$page;
+    $json = fetch_url($apiUrl);
+    if (!$json) return ['error' => 'Failed to fetch search results.'];
+
+    $data = json_decode($json, true);
+    if (isset($data['error'])) return ['error' => $data['message'] ?? $data['error']];
+    if (!is_array($data)) return ['error' => 'Invalid response from search API.'];
+
+    $items = [];
+    foreach ($data as $item) {
+        if (isset($item['bookId'])) {
+            $items[] = [
+                'bookId' => $item['bookId'],
+                'title' => $item['bookName'] ?? 'Unknown',
+                'cover' => $item['cover'] ?? ''
+            ];
+        }
+    }
+
+    return $items;
+}
+
+/**
+ * Fetch ReelShort detail from Sansekai API
+ */
+function fetch_reelshort_detail($bookId) {
+    $apiUrl = "https://api.sansekai.my.id/api/reelshort/detail?bookId=" . $bookId;
+    $json = fetch_url($apiUrl);
+    if (!$json) return null;
+    return json_decode($json, true);
+}
+
+/**
+ * Fetch ReelShort episodes from Sansekai API
+ */
+function fetch_reelshort_episodes($bookId) {
+    $apiUrl = "https://api.sansekai.my.id/api/reelshort/allepisode?bookId=" . $bookId;
+    $json = fetch_url($apiUrl);
+    if (!$json) return null;
+
+    $data = json_decode($json, true);
+    return $data;
+}
+
+/**
  * Scrape DramaBox website for drama list with categories
  */
 function scrape_dramabox() {

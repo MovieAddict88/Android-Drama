@@ -218,7 +218,12 @@ foreach ($dramas as $drama) {
                                         </div>
                                         <div class="card-body">
                                             <div class="card-title"><?php echo htmlspecialchars($item['title']); ?></div>
-                                            <div class="card-subtitle"><?php echo htmlspecialchars($item['book_id']); ?></div>
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <div class="card-subtitle small"><?php echo htmlspecialchars($item['book_id']); ?></div>
+                                                <span class="badge <?php echo $item['platform'] === 'reelshort' ? 'bg-info' : 'bg-danger'; ?> x-small">
+                                                    <?php echo ucfirst($item['platform']); ?>
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
