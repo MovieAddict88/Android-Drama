@@ -191,6 +191,123 @@ function fetch_episodes_from_api($bookId) {
 }
 
 /**
+ * Search ReelShort via Sansekai API
+ */
+function search_reelshort($keyword, $page = 1) {
+    $apiUrl = "https://api.sansekai.my.id/api/reelshort/search?query=" . urlencode($keyword) . "&page=" . (int)$page;
+    $json = fetch_url($apiUrl);
+    if (!$json) return ['error' => 'Failed to fetch search results.'];
+
+    $data = json_decode($json, true);
+    if (!isset($data['success']) || !$data['success']) return ['error' => 'Invalid response from search API.'];
+
+    $items = [];
+    foreach ($data['results'] as $item) {
+        if (isset($item['bookId'])) {
+            $items[] = [
+                'bookId' => $item['bookId'],
+                'title' => $item['title'] ?? 'Unknown',
+                'cover' => $item['cover'] ?? '',
+                'description' => $item['description'] ?? ''
+            ];
+        }
+    }
+
+    return $items;
+}
+
+/**
+ * Scrape ReelShort website for drama list
+ */
+function scrape_reelshort() {
+    $url = "https://www.reelshort.com/";
+    $html = fetch_url($url);
+    if (!$html || strpos($html, 'Error:') === 0) return ['error' => 'Failed to fetch the website. ' . $html];
+
+    $categories = [];
+
+    if (preg_match('/<script id="__NEXT_DATA__" type="application\/json">(.*?)<\/script>/', $html, $scriptMatches)) {
+        $jsonData = json_decode($scriptMatches[1], true);
+        $pageProps = $jsonData['props']['pageProps'] ?? [];
+        $fallback = $pageProps['fallback'] ?? [];
+
+        // Try to find hall info or banners
+        foreach ($fallback as $key => $data) {
+            if (strpos($key, '/api/video/hall/info') !== false && isset($data['banners'])) {
+                $featuredItems = [];
+                foreach ($data['banners'] as $banner) {
+                    if (isset($banner['jump_param']['book_id'])) {
+                        $featuredItems[] = [
+                            'bookId' => $banner['jump_param']['book_id'],
+                            'title' => $banner['title'] ?? 'Unknown',
+                            'cover' => $banner['pic'] ?? '',
+                        ];
+                    }
+                }
+                if (!empty($featuredItems)) {
+                    $categories[] = [
+                        'name' => 'Featured',
+                        'items' => $featuredItems
+                    ];
+                }
+            }
+
+            // Look for categories/sections
+            if (strpos($key, '/api/video/hall/info') !== false && isset($data['hall_list'])) {
+                foreach ($data['hall_list'] as $section) {
+                    if (isset($section['books']) && is_array($section['books'])) {
+                        $sectionItems = [];
+                        foreach ($section['books'] as $book) {
+                            if (isset($book['book_id'])) {
+                                $sectionItems[] = [
+                                    'bookId' => $book['book_id'],
+                                    'title' => $book['title'] ?? 'Unknown',
+                                    'cover' => $book['cover_pic'] ?? ''
+                                ];
+                            }
+                        }
+                        if (!empty($sectionItems)) {
+                            $categories[] = [
+                                'name' => $section['hall_name'] ?? 'Recommended',
+                                'items' => $sectionItems
+                            ];
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (empty($categories)) {
+        return ['error' => 'No dramas found on the page. Website structure might have changed.'];
+    }
+
+    return $categories;
+}
+
+/**
+ * Fetch ReelShort drama detail
+ */
+function fetch_reelshort_detail($bookId) {
+    $apiUrl = "https://api.sansekai.my.id/api/reelshort/detail?bookId=" . $bookId;
+    $json = fetch_url($apiUrl);
+    if (!$json) return null;
+
+    return json_decode($json, true);
+}
+
+/**
+ * Fetch ReelShort episode info
+ */
+function fetch_reelshort_episode($bookId, $episodeNumber) {
+    $apiUrl = "https://api.sansekai.my.id/api/reelshort/episode?bookId=" . $bookId . "&episodeNumber=" . $episodeNumber;
+    $json = fetch_url($apiUrl);
+    if (!$json) return null;
+
+    return json_decode($json, true);
+}
+
+/**
  * Check if admin is logged in
  */
 function check_admin_login() {

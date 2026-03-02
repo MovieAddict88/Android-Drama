@@ -180,7 +180,7 @@ $episodesJson = json_encode($episodesData);
                     <h1 class="display-4 fw-bold"><?php echo htmlspecialchars($drama['title']); ?></h1>
                     <p class="lead">Book ID: <?php echo htmlspecialchars($drama['book_id']); ?></p>
                     <div class="mt-2">
-                        <span class="badge bg-primary">DramaBox</span>
+                        <span class="badge bg-primary"><?php echo htmlspecialchars(ucfirst($drama['platform'] ?? 'DramaBox')); ?></span>
                         <span class="badge bg-secondary"><?php echo count($episodes); ?> Episodes</span>
                     </div>
                 </div>

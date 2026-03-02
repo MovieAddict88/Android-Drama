@@ -6,28 +6,86 @@ check_admin_login();
 $bookId = $_GET['bookId'] ?? null;
 $title = $_GET['title'] ?? 'Unknown';
 $cover = $_GET['cover'] ?? '';
+$platform = $_GET['platform'] ?? 'dramabox';
 
 if (!$bookId) {
     die("Missing bookId");
 }
 
-// Try to fetch better metadata from Sansekai detail API if title is unknown
-if ($title == 'Unknown' || empty($title) || empty($cover)) {
+$description = '';
+$episodesData = [];
+
+if ($platform === 'reelshort') {
+    $detailData = fetch_reelshort_detail($bookId);
+    if ($detailData && isset($detailData['success']) && $detailData['success']) {
+        $title = !empty($detailData['title']) ? $detailData['title'] : $title;
+        $cover = !empty($detailData['cover']) ? $detailData['cover'] : $cover;
+        $description = $detailData['description'] ?? '';
+
+        if (isset($detailData['chapters']) && is_array($detailData['chapters'])) {
+            foreach ($detailData['chapters'] as $chapter) {
+                // For ReelShort we need to fetch each episode's video URL
+                $epInfo = fetch_reelshort_episode($bookId, $chapter['index']);
+                if ($epInfo && isset($epInfo['success']) && $epInfo['success']) {
+                    $resolutions = [];
+                    if (isset($epInfo['videoList'])) {
+                        foreach ($epInfo['videoList'] as $video) {
+                            $resolutions[] = [
+                                'quality' => $video['quality'],
+                                'videoPath' => $video['url']
+                            ];
+                        }
+                    }
+
+                    $episodesData[] = [
+                        'chapterId' => $chapter['chapterId'],
+                        'chapterIndex' => $chapter['index'] - 1, // Store as 0-indexed
+                        'chapterName' => $chapter['title'],
+                        'chapterImg' => $cover, // ReelShort detail doesn't seem to have per-episode images in the list
+                        'resolutions' => $resolutions
+                    ];
+                }
+            }
+        }
+    }
+} else {
+    // DramaBox logic
     $detailJson = fetch_url("https://api.sansekai.my.id/api/dramabox/detail?bookId=" . $bookId);
     if ($detailJson) {
         $detailData = json_decode($detailJson, true);
-        if (isset($detailData['bookName'])) {
+        if (isset($detailData['bookName']) && !empty($detailData['bookName'])) {
             $title = $detailData['bookName'];
         }
-        if (isset($detailData['coverWap']) && empty($cover)) {
+        if (isset($detailData['coverWap']) && !empty($detailData['coverWap'])) {
             $cover = $detailData['coverWap'];
+        }
+        $description = $detailData['introduction'] ?? '';
+    }
+
+    $rawEpisodes = fetch_episodes_from_api($bookId);
+    if ($rawEpisodes && is_array($rawEpisodes)) {
+        foreach ($rawEpisodes as $ep) {
+            $resolutions = [];
+            if (isset($ep['cdnList'][0]['videoPathList'])) {
+                foreach ($ep['cdnList'][0]['videoPathList'] as $video) {
+                    $resolutions[] = [
+                        'quality' => $video['quality'],
+                        'videoPath' => $video['videoPath']
+                    ];
+                }
+            }
+            $episodesData[] = [
+                'chapterId' => $ep['chapterId'] ?? '',
+                'chapterIndex' => $ep['chapterIndex'] ?? 0,
+                'chapterName' => $ep['chapterName'] ?? '',
+                'chapterImg' => $ep['chapterImg'] ?? '',
+                'resolutions' => $resolutions
+            ];
         }
     }
 }
 
-$episodesData = fetch_episodes_from_api($bookId);
-
-if ($episodesData && is_array($episodesData)) {
+if (!empty($episodesData)) {
     try {
         $pdo->beginTransaction();
 
@@ -45,14 +103,14 @@ if ($episodesData && is_array($episodesData)) {
         $drama = $stmt->fetch();
 
         if (!$drama) {
-            $stmt = $pdo->prepare("INSERT INTO dramas (book_id, title, cover_img) VALUES (?, ?, ?)");
-            $stmt->execute([$bookId, $title, $cover]);
+            $stmt = $pdo->prepare("INSERT INTO dramas (book_id, title, cover_img, description, platform) VALUES (?, ?, ?, ?, ?)");
+            $stmt->execute([$bookId, $title, $cover, $description, $platform]);
             $dramaId = $pdo->lastInsertId();
         } else {
             $dramaId = $drama['id'];
-            // Update title/cover if they were previously unknown/empty
-            $stmt = $pdo->prepare("UPDATE dramas SET title = ?, cover_img = ? WHERE id = ? AND (title LIKE 'Drama %' OR cover_img = '')");
-            $stmt->execute([$title, $cover, $dramaId]);
+            // Update metadata
+            $stmt = $pdo->prepare("UPDATE dramas SET title = ?, cover_img = ?, description = ?, platform = ? WHERE id = ?");
+            $stmt->execute([$title, $cover, $description, $platform, $dramaId]);
         }
 
         // Insert Episodes
@@ -60,25 +118,16 @@ if ($episodesData && is_array($episodesData)) {
         $sourceStmt = $pdo->prepare("INSERT INTO episode_sources (episode_id, quality, video_url) VALUES (?, ?, ?)");
 
         foreach ($episodesData as $ep) {
-            $chapterId = $ep['chapterId'] ?? '';
-            $chapterIndex = $ep['chapterIndex'] ?? 0;
-            $chapterName = $ep['chapterName'] ?? '';
-            $chapterImg = $ep['chapterImg'] ?? '';
+            $chapterId = $ep['chapterId'];
+            $chapterIndex = $ep['chapterIndex'];
+            $chapterName = $ep['chapterName'];
+            $chapterImg = $ep['chapterImg'];
+            $resolutions = $ep['resolutions'];
 
-            // Find video resolutions
-            $resolutions = [];
-            if (isset($ep['cdnList'][0]['videoPathList'])) {
-                foreach ($ep['cdnList'][0]['videoPathList'] as $video) {
-                    $resolutions[] = [
-                        'quality' => $video['quality'],
-                        'videoPath' => $video['videoPath']
-                    ];
-                }
-                // Sort by quality descending
-                usort($resolutions, function($a, $b) {
-                    return $b['quality'] - $a['quality'];
-                });
-            }
+            // Sort by quality descending
+            usort($resolutions, function($a, $b) {
+                return (int)$b['quality'] - (int)$a['quality'];
+            });
             $videoUrl = !empty($resolutions) ? json_encode($resolutions) : '';
 
             // Check if episode already exists
@@ -91,14 +140,12 @@ if ($episodesData && is_array($episodesData)) {
                 $episodeId = $pdo->lastInsertId();
             } else {
                 $episodeId = $episode['id'];
-                // Update existing video_url JSON just in case it was a legacy record
-                $updateStmt = $pdo->prepare("UPDATE episodes SET video_url = ? WHERE id = ?");
-                $updateStmt->execute([$videoUrl, $episodeId]);
+                $updateStmt = $pdo->prepare("UPDATE episodes SET video_url = ?, chapter_index = ?, chapter_name = ?, chapter_img = ? WHERE id = ?");
+                $updateStmt->execute([$videoUrl, $chapterIndex, $chapterName, $chapterImg, $episodeId]);
             }
 
             // Populate episode_sources table
             if (!empty($resolutions)) {
-                // Clear old sources to avoid duplicates on regenerate
                 $pdo->prepare("DELETE FROM episode_sources WHERE episode_id = ?")->execute([$episodeId]);
                 foreach ($resolutions as $res) {
                     $sourceStmt->execute([$episodeId, $res['quality'], $res['videoPath']]);
