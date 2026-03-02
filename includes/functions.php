@@ -160,14 +160,10 @@ function scrape_dramabox() {
 function search_dramabox($keyword, $page = 1) {
     $apiUrl = "https://api.sansekai.my.id/api/dramabox/search?query=" . urlencode($keyword) . "&page=" . (int)$page;
     $json = fetch_url($apiUrl);
-    if (!$json) return ['error' => 'Failed to reach search API.'];
+    if (!$json) return ['error' => 'Failed to fetch search results.'];
 
     $data = json_decode($json, true);
-    if (!is_array($data)) return ['error' => 'Invalid JSON response from search API.'];
-
-    if (isset($data['error']) || isset($data['message'])) {
-        return ['error' => $data['message'] ?? $data['error'] ?? 'API Error'];
-    }
+    if (!is_array($data)) return ['error' => 'Invalid response from search API.'];
 
     $items = [];
     foreach ($data as $item) {
@@ -189,69 +185,52 @@ function search_dramabox($keyword, $page = 1) {
 function fetch_episodes_from_api($bookId) {
     $apiUrl = "https://api.sansekai.my.id/api/dramabox/allepisode?bookId=" . $bookId;
     $json = fetch_url($apiUrl);
-    if (!$json) return ['error' => 'Failed to reach episode API.'];
+    if (!$json) return null;
 
-    $data = json_decode($json, true);
-    if (!is_array($data)) return ['error' => 'Invalid JSON response from episode API.'];
+    return json_decode($json, true);
+}
 
-    if (isset($data['error']) || isset($data['message'])) {
-        return ['error' => $data['message'] ?? $data['error'] ?? 'API Episode Error'];
+/**
+ * Check if admin is logged in
+ */
+function check_admin_login() {
+    if (session_status() == PHP_SESSION_NONE) {
+        session_start();
     }
-
-    return $data;
+    if (!isset($_SESSION['admin_logged_in'])) {
+        header("Location: login.php");
+        exit;
+    }
 }
 
 /**
  * Search ReelShort via Sansekai API
  */
-function search_reelshort($keyword, $page = 1) {
-    $apiUrl = "https://api.sansekai.my.id/api/reelshort/search?query=" . urlencode($keyword) . "&page=" . (int)$page;
+function search_reelshort($keyword) {
+    $apiUrl = "https://api.sansekai.my.id/api/reelshort/search?query=" . urlencode($keyword);
     $json = fetch_url($apiUrl);
-    if (!$json) return ['error' => 'Failed to reach search API.'];
+    if (!$json) return ['error' => 'Failed to fetch search results.'];
 
     $data = json_decode($json, true);
-    if (!is_array($data)) return ['error' => 'Invalid JSON response from search API.'];
+    if (!is_array($data)) return ['error' => 'Invalid response from search API.'];
+    if (isset($data['status']) && $data['status'] === 'Forbidden') return ['error' => $data['message'] ?? 'API Access Forbidden'];
 
-    // Check for API-level errors (e.g. Forbidden/Blacklisted)
-    if (isset($data['error']) || isset($data['message'])) {
-        return ['error' => $data['message'] ?? $data['error'] ?? 'API Error'];
-    }
-
-    // Handle standard results wrapper
-    if (isset($data['success']) && $data['success'] && isset($data['results'])) {
-        $items = [];
-        foreach ($data['results'] as $item) {
-            if (isset($item['bookId'])) {
-                $items[] = [
-                    'bookId' => $item['bookId'],
-                    'title' => $item['title'] ?? 'Unknown',
-                    'cover' => $item['cover'] ?? '',
-                    'description' => $item['description'] ?? ''
-                ];
-            }
-        }
-        return $items;
-    }
-
-    // Fallback for flat array response (similar to DramaBox search)
-    if (isset($data[0]['bookId'])) {
-        $items = [];
-        foreach ($data as $item) {
+    $items = [];
+    foreach ($data as $item) {
+        if (isset($item['bookId'])) {
             $items[] = [
                 'bookId' => $item['bookId'],
-                'title' => $item['title'] ?? $item['bookName'] ?? 'Unknown',
-                'cover' => $item['cover'] ?? $item['coverWap'] ?? '',
-                'description' => $item['description'] ?? $item['introduction'] ?? ''
+                'title' => $item['bookName'] ?? 'Unknown',
+                'cover' => $item['cover'] ?? ''
             ];
         }
-        return $items;
     }
 
-    return ['error' => 'Search failed: ' . ($data['message'] ?? 'Unknown API response format')];
+    return $items;
 }
 
 /**
- * Scrape ReelShort website for drama list
+ * Scrape ReelShort website for drama list with categories
  */
 function scrape_reelshort() {
     $url = "https://www.reelshort.com/";
@@ -263,49 +242,25 @@ function scrape_reelshort() {
     if (preg_match('/<script id="__NEXT_DATA__" type="application\/json">(.*?)<\/script>/', $html, $scriptMatches)) {
         $jsonData = json_decode($scriptMatches[1], true);
         $pageProps = $jsonData['props']['pageProps'] ?? [];
-        $fallback = $pageProps['fallback'] ?? [];
 
-        // Try to find hall info or banners
-        foreach ($fallback as $key => $data) {
-            if (strpos($key, '/api/video/hall/info') !== false && isset($data['banners'])) {
-                $featuredItems = [];
-                foreach ($data['banners'] as $banner) {
-                    if (isset($banner['jump_param']['book_id'])) {
-                        $featuredItems[] = [
-                            'bookId' => $banner['jump_param']['book_id'],
-                            'title' => $banner['title'] ?? 'Unknown',
-                            'cover' => $banner['pic'] ?? '',
-                        ];
-                    }
-                }
-                if (!empty($featuredItems)) {
-                    $categories[] = [
-                        'name' => 'Featured',
-                        'items' => $featuredItems
-                    ];
-                }
-            }
-
-            // Look for categories/sections
-            if (strpos($key, '/api/video/hall/info') !== false && isset($data['hall_list'])) {
-                foreach ($data['hall_list'] as $section) {
-                    if (isset($section['books']) && is_array($section['books'])) {
-                        $sectionItems = [];
-                        foreach ($section['books'] as $book) {
-                            if (isset($book['book_id'])) {
-                                $sectionItems[] = [
-                                    'bookId' => $book['book_id'],
-                                    'title' => $book['title'] ?? 'Unknown',
-                                    'cover' => $book['cover_pic'] ?? ''
-                                ];
-                            }
-                        }
-                        if (!empty($sectionItems)) {
-                            $categories[] = [
-                                'name' => $section['hall_name'] ?? 'Recommended',
-                                'items' => $sectionItems
+        if (isset($pageProps['smallData']) && is_array($pageProps['smallData'])) {
+            foreach ($pageProps['smallData'] as $section) {
+                if (isset($section['list']) && is_array($section['list'])) {
+                    $sectionItems = [];
+                    foreach ($section['list'] as $item) {
+                        if (isset($item['bookId'])) {
+                            $sectionItems[] = [
+                                'bookId' => $item['bookId'],
+                                'title' => $item['bookName'] ?? $item['bookNameEn'] ?? 'Unknown',
+                                'cover' => $item['cover'] ?? ''
                             ];
                         }
+                    }
+                    if (!empty($sectionItems)) {
+                        $categories[] = [
+                            'name' => $section['moduleName'] ?? 'Recommended',
+                            'items' => $sectionItems
+                        ];
                     }
                 }
             }
@@ -325,45 +280,22 @@ function scrape_reelshort() {
 function fetch_reelshort_detail($bookId) {
     $apiUrl = "https://api.sansekai.my.id/api/reelshort/detail?bookId=" . $bookId;
     $json = fetch_url($apiUrl);
-    if (!$json) return ['error' => 'Failed to reach detail API.'];
+    if (!$json) return null;
 
     $data = json_decode($json, true);
-    if (!is_array($data)) return ['error' => 'Invalid JSON response from detail API.'];
-
-    if (isset($data['error']) || isset($data['message'])) {
-        return ['error' => $data['message'] ?? $data['error'] ?? 'API Detail Error'];
-    }
-
+    if (isset($data['status']) && $data['status'] === 'Forbidden') return ['error' => $data['message']];
     return $data;
 }
 
 /**
- * Fetch ReelShort episode info
+ * Fetch ReelShort episode detail
  */
 function fetch_reelshort_episode($bookId, $episodeNumber) {
-    $apiUrl = "https://api.sansekai.my.id/api/reelshort/episode?bookId=" . $bookId . "&episodeNumber=" . $episodeNumber;
+    $apiUrl = "https://api.sansekai.my.id/api/reelshort/episode?bookId=$bookId&episodeNumber=$episodeNumber";
     $json = fetch_url($apiUrl);
-    if (!$json) return ['error' => 'Failed to reach episode API.'];
+    if (!$json) return null;
 
     $data = json_decode($json, true);
-    if (!is_array($data)) return ['error' => 'Invalid JSON response from episode API.'];
-
-    if (isset($data['error']) || isset($data['message'])) {
-        return ['error' => $data['message'] ?? $data['error'] ?? 'API Episode Error'];
-    }
-
+    if (isset($data['status']) && $data['status'] === 'Forbidden') return ['error' => $data['message']];
     return $data;
-}
-
-/**
- * Check if admin is logged in
- */
-function check_admin_login() {
-    if (session_status() == PHP_SESSION_NONE) {
-        session_start();
-    }
-    if (!isset($_SESSION['admin_logged_in'])) {
-        header("Location: login.php");
-        exit;
-    }
 }

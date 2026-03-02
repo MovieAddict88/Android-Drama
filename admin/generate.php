@@ -3,6 +3,9 @@ require_once '../includes/db.php';
 require_once '../includes/functions.php';
 check_admin_login();
 
+// Increase time limit for sequential episode fetching
+set_time_limit(0);
+
 $bookId = $_GET['bookId'] ?? null;
 $title = $_GET['title'] ?? 'Unknown';
 $cover = $_GET['cover'] ?? '';
@@ -12,171 +15,160 @@ if (!$bookId) {
     die("Missing bookId");
 }
 
-$description = '';
-$episodesData = [];
-
 if ($platform === 'reelshort') {
-    $detailData = fetch_reelshort_detail($bookId);
-    if ($detailData && !isset($detailData['error'])) {
-        $data = $detailData;
+    // ReelShort Generation Logic
+    $detail = fetch_reelshort_detail($bookId);
+    if (!$detail || isset($detail['error'])) {
+        $error = $detail['error'] ?? "Failed to fetch ReelShort drama details.";
+    } else {
+        $title = $detail['bookName'] ?? $title;
+        $cover = $detail['cover'] ?? $cover;
+        $description = $detail['introduction'] ?? '';
+        $category = $detail['categoryName'] ?? 'ReelShort';
 
-        $title = !empty($data['title']) ? $data['title'] : $title;
-        $cover = !empty($data['cover']) ? $data['cover'] : $cover;
-        $description = $data['description'] ?? '';
+        try {
+            $pdo->beginTransaction();
+            // Insert or update drama
+            $stmt = $pdo->prepare("INSERT INTO dramas (book_id, title, cover_img, description, category, platform)
+                                   VALUES (?, ?, ?, ?, ?, ?)
+                                   ON CONFLICT(book_id) DO UPDATE SET
+                                   title=excluded.title, cover_img=excluded.cover_img, description=excluded.description, platform=excluded.platform");
+            $stmt->execute([$bookId, $title, $cover, $description, $category, 'reelshort']);
 
-        if (isset($data['chapters']) && is_array($data['chapters'])) {
-            foreach ($data['chapters'] as $chapter) {
-                // For ReelShort we need to fetch each episode's video URL
-                $epInfo = fetch_reelshort_episode($bookId, $chapter['index']);
+            $dramaId = $pdo->lastInsertId();
+            if (!$dramaId) {
+                $idStmt = $pdo->prepare("SELECT id FROM dramas WHERE book_id = ?");
+                $idStmt->execute([$bookId]);
+                $dramaId = $idStmt->fetchColumn();
+            }
 
-                if ($epInfo && !isset($epInfo['error'])) {
-                    $epData = $epInfo;
-                    $resolutions = [];
-                    if (isset($epData['videoList'])) {
-                        foreach ($epData['videoList'] as $video) {
+            // Fetch episodes sequentially (ReelShort API requirement)
+            if (isset($detail['chapters']) && is_array($detail['chapters'])) {
+                // Clear old episodes
+                $pdo->prepare("DELETE FROM episodes WHERE drama_id = ?")->execute([$dramaId]);
+
+                $stmt = $pdo->prepare("INSERT INTO episodes (drama_id, chapter_index, chapter_name, video_url) VALUES (?, ?, ?, ?)");
+
+                foreach ($detail['chapters'] as $index => $chapter) {
+                    $episodeNum = $index + 1;
+                    $epData = fetch_reelshort_episode($bookId, $episodeNum);
+
+                    if ($epData && isset($epData['video_list'])) {
+                        $resolutions = [];
+                        foreach ($epData['video_list'] as $video) {
                             $resolutions[] = [
                                 'quality' => $video['quality'],
-                                'videoPath' => $video['url']
+                                'videoPath' => $video['videoPath']
                             ];
                         }
+                        $videoUrl = json_encode($resolutions);
+                        $epTitle = $epData['chapterName'] ?? "Episode $episodeNum";
+                        $stmt->execute([$dramaId, $index, $epTitle, $videoUrl]);
                     }
-
-                    $episodesData[] = [
-                        'chapterId' => $chapter['chapterId'],
-                        'chapterIndex' => $chapter['index'] - 1, // Store as 0-indexed
-                        'chapterName' => $chapter['title'],
-                        'chapterImg' => $cover,
-                        'resolutions' => $resolutions
-                    ];
                 }
             }
+            $pdo->commit();
+            $message = "Successfully generated " . count($detail['chapters']) . " episodes for ReelShort drama: " . htmlspecialchars($title);
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            $error = "Error saving ReelShort to database: " . $e->getMessage();
         }
-    } else {
-        $error = "ReelShort Detail API Error: " . ($detailData['error'] ?? 'Unknown error');
     }
 } else {
-    // DramaBox logic
-    $detailJson = fetch_url("https://api.sansekai.my.id/api/dramabox/detail?bookId=" . $bookId);
-    if ($detailJson) {
-        $detailData = json_decode($detailJson, true);
-        if ($detailData) {
-            if (isset($detailData['error']) || isset($detailData['message'])) {
-                 $error = "DramaBox Detail API Error: " . ($detailData['message'] ?? $detailData['error']);
+    // Original DramaBox Generation Logic (UNTOUCHED)
+    if ($title == 'Unknown' || empty($title) || empty($cover)) {
+        $detailJson = fetch_url("https://api.sansekai.my.id/api/dramabox/detail?bookId=" . $bookId);
+        if ($detailJson) {
+            $detailData = json_decode($detailJson, true);
+            if (isset($detailData['bookName'])) {
+                $title = $detailData['bookName'];
+            }
+            if (isset($detailData['coverWap']) && empty($cover)) {
+                $cover = $detailData['coverWap'];
+            }
+        }
+    }
+
+    $episodesData = fetch_episodes_from_api($bookId);
+
+    if ($episodesData && is_array($episodesData)) {
+        try {
+            $pdo->beginTransaction();
+
+            if ($title == 'Unknown' || empty($title)) {
+                $title = "Drama " . $bookId;
+            }
+            if (empty($cover) && isset($episodesData[0]['chapterImg'])) {
+                $cover = $episodesData[0]['chapterImg'];
+            }
+
+            $stmt = $pdo->prepare("SELECT id FROM dramas WHERE book_id = ?");
+            $stmt->execute([$bookId]);
+            $drama = $stmt->fetch();
+
+            if (!$drama) {
+                $stmt = $pdo->prepare("INSERT INTO dramas (book_id, title, cover_img) VALUES (?, ?, ?)");
+                $stmt->execute([$bookId, $title, $cover]);
+                $dramaId = $pdo->lastInsertId();
             } else {
-                if (isset($detailData['bookName']) && !empty($detailData['bookName'])) {
-                    $title = $detailData['bookName'];
-                }
-                if (isset($detailData['coverWap']) && !empty($detailData['coverWap'])) {
-                    $cover = $detailData['coverWap'];
-                }
-                $description = $detailData['introduction'] ?? '';
+                $dramaId = $drama['id'];
+                $stmt = $pdo->prepare("UPDATE dramas SET title = ?, cover_img = ? WHERE id = ? AND (title LIKE 'Drama %' OR cover_img = '')");
+                $stmt->execute([$title, $cover, $dramaId]);
             }
+
+            $stmt = $pdo->prepare("INSERT INTO episodes (drama_id, chapter_id, chapter_index, chapter_name, video_url, chapter_img) VALUES (?, ?, ?, ?, ?, ?)");
+            $sourceStmt = $pdo->prepare("INSERT INTO episode_sources (episode_id, quality, video_url) VALUES (?, ?, ?)");
+
+            foreach ($episodesData as $ep) {
+                $chapterId = $ep['chapterId'] ?? '';
+                $chapterIndex = $ep['chapterIndex'] ?? 0;
+                $chapterName = $ep['chapterName'] ?? '';
+                $chapterImg = $ep['chapterImg'] ?? '';
+
+                $resolutions = [];
+                if (isset($ep['cdnList'][0]['videoPathList'])) {
+                    foreach ($ep['cdnList'][0]['videoPathList'] as $video) {
+                        $resolutions[] = [
+                            'quality' => $video['quality'],
+                            'videoPath' => $video['videoPath']
+                        ];
+                    }
+                    usort($resolutions, function($a, $b) {
+                        return $b['quality'] - $a['quality'];
+                    });
+                }
+                $videoUrl = !empty($resolutions) ? json_encode($resolutions) : '';
+
+                $checkStmt = $pdo->prepare("SELECT id FROM episodes WHERE drama_id = ? AND chapter_id = ?");
+                $checkStmt->execute([$dramaId, $chapterId]);
+                $episode = $checkStmt->fetch();
+
+                if (!$episode) {
+                    $stmt->execute([$dramaId, $chapterId, $chapterIndex, $chapterName, $videoUrl, $chapterImg]);
+                    $episodeId = $pdo->lastInsertId();
+                } else {
+                    $episodeId = $episode['id'];
+                    $updateStmt = $pdo->prepare("UPDATE episodes SET video_url = ? WHERE id = ?");
+                    $updateStmt->execute([$videoUrl, $episodeId]);
+                }
+
+                if (!empty($resolutions)) {
+                    $pdo->prepare("DELETE FROM episode_sources WHERE episode_id = ?")->execute([$episodeId]);
+                    foreach ($resolutions as $res) {
+                        $sourceStmt->execute([$episodeId, $res['quality'], $res['videoPath']]);
+                    }
+                }
+            }
+
+            $pdo->commit();
+            $message = "Successfully generated " . count($episodesData) . " episodes for drama: " . htmlspecialchars($title);
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            $error = "Error saving to database: " . $e->getMessage();
         }
+    } else {
+        $error = "Failed to fetch episodes from Sansekai API.";
     }
-
-    if (!isset($error)) {
-        $rawEpisodes = fetch_episodes_from_api($bookId);
-        if ($rawEpisodes && is_array($rawEpisodes) && !isset($rawEpisodes['error'])) {
-            foreach ($rawEpisodes as $ep) {
-            $resolutions = [];
-            if (isset($ep['cdnList'][0]['videoPathList'])) {
-                foreach ($ep['cdnList'][0]['videoPathList'] as $video) {
-                    $resolutions[] = [
-                        'quality' => $video['quality'],
-                        'videoPath' => $video['videoPath']
-                    ];
-                }
-            }
-                $episodesData[] = [
-                    'chapterId' => $ep['chapterId'] ?? '',
-                    'chapterIndex' => $ep['chapterIndex'] ?? 0,
-                    'chapterName' => $ep['chapterName'] ?? '',
-                    'chapterImg' => $ep['chapterImg'] ?? '',
-                    'resolutions' => $resolutions
-                ];
-            }
-        } elseif (isset($rawEpisodes['error'])) {
-            $error = "DramaBox Episode API Error: " . $rawEpisodes['error'];
-        }
-    }
-}
-
-if (!empty($episodesData)) {
-    try {
-        $pdo->beginTransaction();
-
-        // Fallback for title and cover
-        if ($title == 'Unknown' || empty($title)) {
-            $title = "Drama " . $bookId;
-        }
-        if (empty($cover) && isset($episodesData[0]['chapterImg'])) {
-            $cover = $episodesData[0]['chapterImg'];
-        }
-
-        // Check if drama already exists
-        $stmt = $pdo->prepare("SELECT id FROM dramas WHERE book_id = ?");
-        $stmt->execute([$bookId]);
-        $drama = $stmt->fetch();
-
-        if (!$drama) {
-            $stmt = $pdo->prepare("INSERT INTO dramas (book_id, title, cover_img, description, platform) VALUES (?, ?, ?, ?, ?)");
-            $stmt->execute([$bookId, $title, $cover, $description, $platform]);
-            $dramaId = $pdo->lastInsertId();
-        } else {
-            $dramaId = $drama['id'];
-            // Update metadata
-            $stmt = $pdo->prepare("UPDATE dramas SET title = ?, cover_img = ?, description = ?, platform = ? WHERE id = ?");
-            $stmt->execute([$title, $cover, $description, $platform, $dramaId]);
-        }
-
-        // Insert Episodes
-        $stmt = $pdo->prepare("INSERT INTO episodes (drama_id, chapter_id, chapter_index, chapter_name, video_url, chapter_img) VALUES (?, ?, ?, ?, ?, ?)");
-        $sourceStmt = $pdo->prepare("INSERT INTO episode_sources (episode_id, quality, video_url) VALUES (?, ?, ?)");
-
-        foreach ($episodesData as $ep) {
-            $chapterId = $ep['chapterId'];
-            $chapterIndex = $ep['chapterIndex'];
-            $chapterName = $ep['chapterName'];
-            $chapterImg = $ep['chapterImg'];
-            $resolutions = $ep['resolutions'];
-
-            // Sort by quality descending
-            usort($resolutions, function($a, $b) {
-                return (int)$b['quality'] - (int)$a['quality'];
-            });
-            $videoUrl = !empty($resolutions) ? json_encode($resolutions) : '';
-
-            // Check if episode already exists
-            $checkStmt = $pdo->prepare("SELECT id FROM episodes WHERE drama_id = ? AND chapter_id = ?");
-            $checkStmt->execute([$dramaId, $chapterId]);
-            $episode = $checkStmt->fetch();
-
-            if (!$episode) {
-                $stmt->execute([$dramaId, $chapterId, $chapterIndex, $chapterName, $videoUrl, $chapterImg]);
-                $episodeId = $pdo->lastInsertId();
-            } else {
-                $episodeId = $episode['id'];
-                $updateStmt = $pdo->prepare("UPDATE episodes SET video_url = ?, chapter_index = ?, chapter_name = ?, chapter_img = ? WHERE id = ?");
-                $updateStmt->execute([$videoUrl, $chapterIndex, $chapterName, $chapterImg, $episodeId]);
-            }
-
-            // Populate episode_sources table
-            if (!empty($resolutions)) {
-                $pdo->prepare("DELETE FROM episode_sources WHERE episode_id = ?")->execute([$episodeId]);
-                foreach ($resolutions as $res) {
-                    $sourceStmt->execute([$episodeId, $res['quality'], $res['videoPath']]);
-                }
-            }
-        }
-
-        $pdo->commit();
-        $message = "Successfully generated " . count($episodesData) . " episodes for drama: " . htmlspecialchars($title);
-    } catch (Exception $e) {
-        $pdo->rollBack();
-        $error = "Error saving to database: " . $e->getMessage();
-    }
-} elseif (!isset($error)) {
-    $error = "Failed to fetch episodes from Sansekai API. No episode data found.";
 }
 ?>
 <!DOCTYPE html>
@@ -195,7 +187,7 @@ if (!empty($episodesData)) {
                 <h3>Done!</h3>
                 <p><?php echo $message; ?></p>
                 <div class="mt-4">
-                    <a href="<?php echo ($platform === 'reelshort' ? 'reelshort.php' : 'dramabox.php'); ?>" class="btn btn-outline-primary">Back to <?php echo ($platform === 'reelshort' ? 'ReelShort' : 'DramaBox'); ?></a>
+                    <a href="<?php echo $platform === 'reelshort' ? 'reelshort.php' : 'dramabox.php'; ?>" class="btn btn-outline-primary">Back</a>
                     <a href="../index.php" class="btn btn-primary" target="_blank">View Site</a>
                 </div>
             </div>
@@ -204,7 +196,7 @@ if (!empty($episodesData)) {
                 <h3>Error</h3>
                 <p><?php echo $error; ?></p>
                 <div class="mt-4">
-                    <a href="<?php echo ($platform === 'reelshort' ? 'reelshort.php' : 'dramabox.php'); ?>" class="btn btn-primary">Try Again</a>
+                    <a href="<?php echo $platform === 'reelshort' ? 'reelshort.php' : 'dramabox.php'; ?>" class="btn btn-primary">Try Again</a>
                 </div>
             </div>
         <?php endif; ?>
