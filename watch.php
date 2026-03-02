@@ -87,6 +87,17 @@ $episodesJson = json_encode($episodesData);
         .video-container:-webkit-full-screen { padding-bottom: 0; height: 100vh; max-width: none; border-radius: 0; }
         .video-container:-webkit-full-screen video { height: 100%; object-fit: contain; }
         .drama-header { background: linear-gradient(rgba(0,0,0,0.8), rgba(18,18,18,1)), url('<?php echo htmlspecialchars($drama['cover_img']); ?>'); background-size: cover; background-position: center; padding: 60px 0; margin-bottom: 30px; }
+        .platform-badge {
+            background: #ff2d55;
+            color: white;
+            font-size: 0.65rem;
+            padding: 2px 8px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            font-weight: 800;
+            margin-bottom: 8px;
+            display: inline-block;
+        }
         .quality-selector { position: absolute; top: 10px; right: 10px; z-index: 10; }
         .quality-btn { background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); color: white; font-size: 0.8rem; padding: 2px 8px; border-radius: 4px; backdrop-filter: blur(4px); }
         .quality-btn:hover { background: rgba(255,255,255,0.1); color: white; }
@@ -177,10 +188,16 @@ $episodesJson = json_encode($episodesData);
                     <img src="<?php echo htmlspecialchars($drama['cover_img']); ?>" class="img-fluid rounded shadow" alt="<?php echo htmlspecialchars($drama['title']); ?>" onerror="this.src='https://via.placeholder.com/240x400?text=No+Image'">
                 </div>
                 <div class="col-md-9 col-8 d-flex flex-column justify-content-center">
+                    <?php if(isset($drama['platform']) && $drama['platform'] !== 'dramabox'): ?>
+                        <span class="platform-badge"><?php echo $drama['platform']; ?></span>
+                    <?php endif; ?>
                     <h1 class="display-4 fw-bold"><?php echo htmlspecialchars($drama['title']); ?></h1>
                     <p class="lead">Book ID: <?php echo htmlspecialchars($drama['book_id']); ?></p>
+                    <?php if(isset($drama['description']) && $drama['description']): ?>
+                        <p class="text-muted small"><?php echo htmlspecialchars($drama['description']); ?></p>
+                    <?php endif; ?>
                     <div class="mt-2">
-                        <span class="badge bg-primary">DramaBox</span>
+                        <span class="badge bg-primary"><?php echo ucfirst($drama['platform'] ?? 'DramaBox'); ?></span>
                         <span class="badge bg-secondary"><?php echo count($episodes); ?> Episodes</span>
                     </div>
                 </div>

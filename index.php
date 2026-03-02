@@ -36,6 +36,18 @@ foreach ($allDramas as $drama) {
         .category-section { margin-bottom: 3rem; }
         .category-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 1.5rem; padding-left: 10px; border-left: 4px solid #ff2d55; }
 
+        .platform-badge {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+            z-index: 2;
+        }
+
         .drama-slider {
             display: flex;
             overflow-x: auto;
@@ -120,6 +132,9 @@ foreach ($allDramas as $drama) {
                         <?php foreach ($dramas as $drama): ?>
                             <a href="watch.php?id=<?php echo (int)$drama['id']; ?>" class="drama-card">
                                 <div class="drama-img-wrapper shadow">
+                                    <?php if(isset($drama['platform']) && $drama['platform'] !== 'dramabox'): ?>
+                                        <span class="platform-badge"><?php echo strtoupper($drama['platform']); ?></span>
+                                    <?php endif; ?>
                                     <img src="<?php echo htmlspecialchars($drama['cover_img']); ?>" class="drama-img" alt="<?php echo htmlspecialchars($drama['title']); ?>" onerror="this.src='https://via.placeholder.com/240x400?text=No+Image'">
                                 </div>
                                 <div class="drama-title"><?php echo htmlspecialchars($drama['title']); ?></div>
