@@ -6,26 +6,64 @@ check_admin_login();
 $bookId = $_GET['bookId'] ?? null;
 $title = $_GET['title'] ?? 'Unknown';
 $cover = $_GET['cover'] ?? '';
+$platform = $_GET['platform'] ?? 'dramabox';
 
 if (!$bookId) {
     die("Missing bookId");
 }
 
-// Try to fetch better metadata from Sansekai detail API if title is unknown
-if ($title == 'Unknown' || empty($title) || empty($cover)) {
-    $detailJson = fetch_url("https://api.sansekai.my.id/api/dramabox/detail?bookId=" . $bookId);
-    if ($detailJson) {
-        $detailData = json_decode($detailJson, true);
-        if (isset($detailData['bookName'])) {
-            $title = $detailData['bookName'];
-        }
-        if (isset($detailData['coverWap']) && empty($cover)) {
-            $cover = $detailData['coverWap'];
+$episodesData = [];
+
+if ($platform === 'reelshort') {
+    $detailData = fetch_reelshort_detail($bookId);
+    if ($detailData) {
+        $title = $detailData['bookName'] ?? $title;
+        $cover = $detailData['cover'] ?? $cover;
+        $description = $detailData['introduction'] ?? '';
+
+        // ReelShort episodes must be fetched one by one since there's no allepisode API
+        // We'll try to fetch up to 200 episodes or until it fails
+        for ($i = 1; $i <= 200; $i++) {
+            $ep = fetch_reelshort_episode($bookId, $i);
+            if ($ep && isset($ep['videoPath'])) {
+                // Normalize to match DramaBox structure for the generator loop
+                $episodesData[] = [
+                    'chapterId' => $ep['chapterId'] ?? ($bookId . '-' . $i),
+                    'chapterIndex' => $i - 1,
+                    'chapterName' => $ep['chapterName'] ?? "Episode $i",
+                    'chapterImg' => $ep['chapterImg'] ?? $cover,
+                    'cdnList' => [
+                        [
+                            'videoPathList' => [
+                                [
+                                    'quality' => 'Default',
+                                    'videoPath' => $ep['videoPath']
+                                ]
+                            ]
+                        ]
+                    ]
+                ];
+            } else {
+                break; // Stop when no more episodes
+            }
         }
     }
+} else {
+    // Try to fetch better metadata from Sansekai detail API if title is unknown
+    if ($title == 'Unknown' || empty($title) || empty($cover)) {
+        $detailJson = fetch_url("https://api.sansekai.my.id/api/dramabox/detail?bookId=" . $bookId);
+        if ($detailJson) {
+            $detailData = json_decode($detailJson, true);
+            if (isset($detailData['bookName'])) {
+                $title = $detailData['bookName'];
+            }
+            if (isset($detailData['coverWap']) && empty($cover)) {
+                $cover = $detailData['coverWap'];
+            }
+        }
+    }
+    $episodesData = fetch_episodes_from_api($bookId);
 }
-
-$episodesData = fetch_episodes_from_api($bookId);
 
 if ($episodesData && is_array($episodesData)) {
     try {
@@ -45,14 +83,14 @@ if ($episodesData && is_array($episodesData)) {
         $drama = $stmt->fetch();
 
         if (!$drama) {
-            $stmt = $pdo->prepare("INSERT INTO dramas (book_id, title, cover_img) VALUES (?, ?, ?)");
-            $stmt->execute([$bookId, $title, $cover]);
+            $stmt = $pdo->prepare("INSERT INTO dramas (book_id, title, cover_img, platform) VALUES (?, ?, ?, ?)");
+            $stmt->execute([$bookId, $title, $cover, $platform]);
             $dramaId = $pdo->lastInsertId();
         } else {
             $dramaId = $drama['id'];
-            // Update title/cover if they were previously unknown/empty
-            $stmt = $pdo->prepare("UPDATE dramas SET title = ?, cover_img = ? WHERE id = ? AND (title LIKE 'Drama %' OR cover_img = '')");
-            $stmt->execute([$title, $cover, $dramaId]);
+            // Update title/cover/platform if they were previously unknown/empty/default
+            $stmt = $pdo->prepare("UPDATE dramas SET title = ?, cover_img = ?, platform = ? WHERE id = ? AND (title LIKE 'Drama %' OR cover_img = '')");
+            $stmt->execute([$title, $cover, $platform, $dramaId]);
         }
 
         // Insert Episodes
@@ -76,7 +114,10 @@ if ($episodesData && is_array($episodesData)) {
                 }
                 // Sort by quality descending
                 usort($resolutions, function($a, $b) {
-                    return $b['quality'] - $a['quality'];
+                    // Handle non-numeric quality
+                    $qa = is_numeric($a['quality']) ? (int)$a['quality'] : 0;
+                    $qb = is_numeric($b['quality']) ? (int)$b['quality'] : 0;
+                    return $qb - $qa;
                 });
             }
             $videoUrl = !empty($resolutions) ? json_encode($resolutions) : '';

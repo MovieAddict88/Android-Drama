@@ -46,6 +46,16 @@ try {
             // Column might already exist or table doesn't exist yet
         }
     }
+
+    try {
+        $pdo->query("SELECT platform FROM dramas LIMIT 1");
+    } catch (Exception $e) {
+        try {
+            $pdo->exec("ALTER TABLE dramas ADD COLUMN platform VARCHAR(50) DEFAULT 'dramabox'");
+        } catch (Exception $e2) {
+            // Column might already exist or table doesn't exist yet
+        }
+    }
 } catch (PDOException $e) {
     die("Connection failed: " . $e->getMessage());
 }
