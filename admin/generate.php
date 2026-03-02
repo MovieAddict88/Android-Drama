@@ -3,6 +3,8 @@ require_once '../includes/db.php';
 require_once '../includes/functions.php';
 check_admin_login();
 
+set_time_limit(0);
+
 $bookId = $_GET['bookId'] ?? null;
 $title = $_GET['title'] ?? 'Unknown';
 $cover = $_GET['cover'] ?? '';
@@ -16,7 +18,9 @@ $episodesData = [];
 
 if ($platform === 'reelshort') {
     $detailData = fetch_reelshort_detail($bookId);
-    if ($detailData) {
+    if ($detailData && isset($detailData['error'])) {
+        $error = "Sansekai API Error: " . ($detailData['message'] ?? 'Unknown error');
+    } elseif ($detailData) {
         $title = $detailData['bookName'] ?? $title;
         $cover = $detailData['cover'] ?? $cover;
         $description = $detailData['introduction'] ?? '';
@@ -25,7 +29,30 @@ if ($platform === 'reelshort') {
         // We'll try to fetch up to 200 episodes or until it fails
         for ($i = 1; $i <= 200; $i++) {
             $ep = fetch_reelshort_episode($bookId, $i);
-            if ($ep && isset($ep['videoPath'])) {
+
+            // Check for API errors
+            if ($ep && isset($ep['error'])) {
+                $error = "Sansekai API Error: " . ($ep['message'] ?? 'Unknown error');
+                break;
+            }
+
+            if ($ep && (!empty($ep['videoList']) || isset($ep['videoPath']))) {
+                $videoPathList = [];
+
+                if (!empty($ep['videoList'])) {
+                    foreach ($ep['videoList'] as $video) {
+                        $videoPathList[] = [
+                            'quality' => $video['quality'] ?: 'Default',
+                            'videoPath' => $video['url']
+                        ];
+                    }
+                } elseif (isset($ep['videoPath'])) {
+                    $videoPathList[] = [
+                        'quality' => 'Default',
+                        'videoPath' => $ep['videoPath']
+                    ];
+                }
+
                 // Normalize to match DramaBox structure for the generator loop
                 $episodesData[] = [
                     'chapterId' => $ep['chapterId'] ?? ($bookId . '-' . $i),
@@ -34,12 +61,7 @@ if ($platform === 'reelshort') {
                     'chapterImg' => $ep['chapterImg'] ?? $cover,
                     'cdnList' => [
                         [
-                            'videoPathList' => [
-                                [
-                                    'quality' => 'Default',
-                                    'videoPath' => $ep['videoPath']
-                                ]
-                            ]
+                            'videoPathList' => $videoPathList
                         ]
                     ]
                 ];
@@ -83,14 +105,14 @@ if ($episodesData && is_array($episodesData)) {
         $drama = $stmt->fetch();
 
         if (!$drama) {
-            $stmt = $pdo->prepare("INSERT INTO dramas (book_id, title, cover_img, platform) VALUES (?, ?, ?, ?)");
-            $stmt->execute([$bookId, $title, $cover, $platform]);
+            $stmt = $pdo->prepare("INSERT INTO dramas (book_id, title, cover_img, platform, description) VALUES (?, ?, ?, ?, ?)");
+            $stmt->execute([$bookId, $title, $cover, $platform, $description ?? '']);
             $dramaId = $pdo->lastInsertId();
         } else {
             $dramaId = $drama['id'];
-            // Update title/cover/platform if they were previously unknown/empty/default
-            $stmt = $pdo->prepare("UPDATE dramas SET title = ?, cover_img = ?, platform = ? WHERE id = ? AND (title LIKE 'Drama %' OR cover_img = '')");
-            $stmt->execute([$title, $cover, $platform, $dramaId]);
+            // Update title/cover/platform/description if they were previously unknown/empty/default
+            $stmt = $pdo->prepare("UPDATE dramas SET title = ?, cover_img = ?, platform = ?, description = ? WHERE id = ? AND (title LIKE 'Drama %' OR cover_img = '' OR description IS NULL OR description = '')");
+            $stmt->execute([$title, $cover, $platform, $description ?? '', $dramaId]);
         }
 
         // Insert Episodes
@@ -153,7 +175,7 @@ if ($episodesData && is_array($episodesData)) {
         $pdo->rollBack();
         $error = "Error saving to database: " . $e->getMessage();
     }
-} else {
+} elseif (!isset($error)) {
     $error = "Failed to fetch episodes from Sansekai API.";
 }
 ?>

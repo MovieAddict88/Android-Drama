@@ -209,16 +209,16 @@ $existing_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
                                 <div class="col">
                                     <div class="drama-card">
                                         <div class="card-img-container shadow">
-                                            <img src="<?php echo $item['cover']; ?>" alt="<?php echo $item['title']; ?>" loading="lazy" onerror="this.src='https://via.placeholder.com/240x400?text=No+Image'">
+                                            <img src="<?php echo htmlspecialchars($item['cover']); ?>" alt="<?php echo htmlspecialchars($item['title']); ?>" loading="lazy" onerror="this.src='https://via.placeholder.com/240x400?text=No+Image'">
                                             <div class="card-overlay">
                                                 <?php if (in_array($item['bookId'], $existing_ids)): ?>
                                                     <span class="generate-btn btn-generated">DONE</span>
                                                 <?php else: ?>
-                                                    <a href="generate.php?bookId=<?php echo $item['bookId']; ?>&title=<?php echo urlencode($item['title']); ?>&cover=<?php echo urlencode($item['cover']); ?>&platform=reelshort" class="generate-btn">GENERATE</a>
+                                                    <a href="generate.php?bookId=<?php echo htmlspecialchars($item['bookId']); ?>&title=<?php echo urlencode($item['title']); ?>&cover=<?php echo urlencode($item['cover']); ?>&platform=reelshort" class="generate-btn">GENERATE</a>
                                                 <?php endif; ?>
                                             </div>
                                         </div>
-                                        <div class="card-title mt-2"><?php echo $item['title']; ?></div>
+                                        <div class="card-title mt-2"><?php echo htmlspecialchars($item['title']); ?></div>
                                     </div>
                                 </div>
                             <?php endforeach; ?>
@@ -304,16 +304,16 @@ $existing_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
                                 <div class="col">
                                     <div class="drama-card">
                                         <div class="card-img-container shadow">
-                                            <img src="<?php echo $item['cover']; ?>" alt="<?php echo $item['title']; ?>" loading="lazy" onerror="this.src='https://via.placeholder.com/240x400?text=No+Image'">
+                                            <img src="<?php echo htmlspecialchars($item['cover']); ?>" alt="<?php echo htmlspecialchars($item['title']); ?>" loading="lazy" onerror="this.src='https://via.placeholder.com/240x400?text=No+Image'">
                                             <div class="card-overlay">
                                                 <?php if (in_array($item['bookId'], $existing_ids)): ?>
                                                     <span class="generate-btn btn-generated">DONE</span>
                                                 <?php else: ?>
-                                                    <a href="generate.php?bookId=<?php echo $item['bookId']; ?>&title=<?php echo urlencode($item['title']); ?>&cover=<?php echo urlencode($item['cover']); ?>&platform=reelshort" class="generate-btn">GENERATE</a>
+                                                    <a href="generate.php?bookId=<?php echo htmlspecialchars($item['bookId']); ?>&title=<?php echo urlencode($item['title']); ?>&cover=<?php echo urlencode($item['cover']); ?>&platform=reelshort" class="generate-btn">GENERATE</a>
                                                 <?php endif; ?>
                                             </div>
                                         </div>
-                                        <div class="card-title mt-2"><?php echo $item['title']; ?></div>
+                                        <div class="card-title mt-2"><?php echo htmlspecialchars($item['title']); ?></div>
                                     </div>
                                 </div>
                             <?php endforeach; ?>

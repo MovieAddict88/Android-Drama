@@ -20,9 +20,8 @@ function fetch_url($url) {
     curl_setopt($ch, CURLOPT_TIMEOUT, 30);
     $result = curl_exec($ch);
     if (curl_errno($ch)) {
-        $error_msg = curl_error($ch);
         curl_close($ch);
-        return "Error: $error_msg";
+        return false;
     }
     curl_close($ch);
     return $result;
