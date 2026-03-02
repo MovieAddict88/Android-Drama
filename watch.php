@@ -37,6 +37,31 @@ if (!$currentEpisode && !empty($episodes)) {
     $currentEpisode = $episodes[0];
 }
 
+$episodesData = [];
+foreach ($episodes as $ep) {
+    $sourceStmt = $pdo->prepare("SELECT quality, video_url as videoPath FROM episode_sources WHERE episode_id = ? ORDER BY CAST(quality AS UNSIGNED) DESC");
+    $sourceStmt->execute([$ep['id']]);
+    $sources = $sourceStmt->fetchAll();
+
+    if (empty($sources)) {
+        $videoData = json_decode($ep['video_url'], true);
+        if (is_array($videoData)) {
+            $sources = $videoData;
+        } else {
+            $sources = [['quality' => 'Default', 'videoPath' => $ep['video_url']]];
+        }
+    }
+
+    $episodesData[] = [
+        'id' => (int)$ep['id'],
+        'index' => (int)$ep['chapter_index'],
+        'name' => $ep['chapter_name'],
+        'img' => $ep['chapter_img'],
+        'sources' => $sources
+    ];
+}
+$episodesJson = json_encode($episodesData);
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -55,6 +80,12 @@ if (!$currentEpisode && !empty($episodes)) {
         .ep-item.active { background-color: #0d6efd; }
         .video-container { position: relative; padding-bottom: 177.77%; height: 0; overflow: hidden; background-color: #000; border-radius: 8px; max-width: 450px; margin: 0 auto; }
         .video-container video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+
+        /* Fullscreen styles */
+        .video-container:fullscreen { padding-bottom: 0; height: 100vh; max-width: none; border-radius: 0; }
+        .video-container:fullscreen video { height: 100%; object-fit: contain; }
+        .video-container:-webkit-full-screen { padding-bottom: 0; height: 100vh; max-width: none; border-radius: 0; }
+        .video-container:-webkit-full-screen video { height: 100%; object-fit: contain; }
         .drama-header { background: linear-gradient(rgba(0,0,0,0.8), rgba(18,18,18,1)), url('<?php echo htmlspecialchars($drama['cover_img']); ?>'); background-size: cover; background-position: center; padding: 60px 0; margin-bottom: 30px; }
         .quality-selector { position: absolute; top: 10px; right: 10px; z-index: 10; }
         .quality-btn { background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); color: white; font-size: 0.8rem; padding: 2px 8px; border-radius: 4px; backdrop-filter: blur(4px); }
@@ -102,6 +133,25 @@ if (!$currentEpisode && !empty($episodes)) {
         .nav-overlay-next {
             border-radius: 8px 0 0 8px;
         }
+        .fullscreen-btn {
+            position: absolute;
+            bottom: 60px;
+            right: 10px;
+            z-index: 10;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            backdrop-filter: blur(4px);
+            cursor: pointer;
+            pointer-events: auto;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .video-container.user-active .fullscreen-btn {
+            opacity: 1;
+        }
     </style>
 </head>
 <body>
@@ -142,78 +192,37 @@ if (!$currentEpisode && !empty($episodes)) {
         <div class="row">
             <div class="col-lg-8">
                 <?php if ($currentEpisode): ?>
-                    <?php
-                    // Fetch sources from new table first
-                    $sourceStmt = $pdo->prepare("SELECT quality, video_url as videoPath FROM episode_sources WHERE episode_id = ? ORDER BY CAST(quality AS UNSIGNED) DESC");
-                    $sourceStmt->execute([$currentEpisode['id']]);
-                    $sources = $sourceStmt->fetchAll();
-
-                    if (empty($sources)) {
-                        // Fallback to video_url column (JSON or single URL)
-                        $videoData = json_decode($currentEpisode['video_url'], true);
-                        if (is_array($videoData)) {
-                            $sources = $videoData;
-                        } else {
-                            // Legacy support for single URL string
-                            $sources = [['quality' => 'Default', 'videoPath' => $currentEpisode['video_url']]];
-                        }
-                    }
-                    $defaultSource = $sources[0]['videoPath'] ?? '';
-
-                    $prevEp = null;
-                    $nextEp = null;
-                    foreach ($episodes as $idx => $ep) {
-                        if ($ep['id'] == $currentEpisode['id']) {
-                            $prevEp = $episodes[$idx - 1] ?? null;
-                            $nextEp = $episodes[$idx + 1] ?? null;
-                            break;
-                        }
-                    }
-                    ?>
                     <div class="video-container mb-3 shadow position-relative">
-                        <?php if (count($sources) > 1): ?>
-                            <div class="quality-selector dropdown">
-                                <button class="quality-btn dropdown-toggle" type="button" id="qualityDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <i class="bi bi-gear-fill me-1"></i> <span id="current-quality"><?php echo is_numeric($sources[0]['quality']) ? $sources[0]['quality'] . 'p' : $sources[0]['quality']; ?></span>
-                                </button>
-                                <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end" aria-labelledby="qualityDropdown">
-                                    <?php foreach ($sources as $source): ?>
-                                        <li><a class="dropdown-item small" href="#" onclick="changeQuality('<?php echo $source['videoPath']; ?>', '<?php echo $source['quality']; ?>'); return false;"><?php echo is_numeric($source['quality']) ? $source['quality'] . 'p' : $source['quality']; ?></a></li>
-                                    <?php endforeach; ?>
-                                </ul>
-                            </div>
-                        <?php endif; ?>
-                        <video id="main-video" controls poster="<?php echo htmlspecialchars($currentEpisode['chapter_img']); ?>" playsinline>
-                            <source src="<?php echo htmlspecialchars($defaultSource); ?>" type="video/mp4">
+                        <div class="quality-selector dropdown" id="quality-selector-container" style="display: none;">
+                            <button class="quality-btn dropdown-toggle" type="button" id="qualityDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-gear-fill me-1"></i> <span id="current-quality">Default</span>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end" id="quality-list" aria-labelledby="qualityDropdown">
+                                <!-- Qualities will be loaded by JS -->
+                            </ul>
+                        </div>
+                        <video id="main-video" controls poster="" playsinline>
+                            <source src="" type="video/mp4">
                             Your browser does not support the video tag.
                         </video>
                         <div class="video-nav-overlay">
-                            <?php if ($prevEp): ?>
-                                <a href="watch.php?id=<?php echo $id; ?>&ep=<?php echo $prevEp['chapter_index']; ?>" class="nav-overlay-btn nav-overlay-prev">
-                                    <i class="bi bi-chevron-left"></i>
-                                </a>
-                            <?php else: ?>
-                                <div></div>
-                            <?php endif; ?>
+                            <a href="#" id="overlay-prev" class="nav-overlay-btn nav-overlay-prev" onclick="loadEpisodeByIndex(currentIndex - 1); return false;">
+                                <i class="bi bi-chevron-left"></i>
+                            </a>
+                            <div id="overlay-prev-placeholder"></div>
 
-                            <?php if ($nextEp): ?>
-                                <a href="watch.php?id=<?php echo $id; ?>&ep=<?php echo $nextEp['chapter_index']; ?>" class="nav-overlay-btn nav-overlay-next">
-                                    <i class="bi bi-chevron-right"></i>
-                                </a>
-                            <?php else: ?>
-                                <div></div>
-                            <?php endif; ?>
+                            <a href="#" id="overlay-next" class="nav-overlay-btn nav-overlay-next" onclick="loadEpisodeByIndex(currentIndex + 1); return false;">
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                            <div id="overlay-next-placeholder"></div>
                         </div>
+                        <button class="fullscreen-btn" onclick="toggleFullscreen()"><i class="bi bi-arrows-fullscreen"></i></button>
                     </div>
                     <div class="d-flex justify-content-between align-items-center mb-4">
-                        <h4 class="mb-0"><?php echo htmlspecialchars($currentEpisode['chapter_name']); ?></h4>
+                        <h4 class="mb-0" id="current-ep-title">Loading...</h4>
                         <div>
-                            <?php if ($prevEp): ?>
-                                <a href="watch.php?id=<?php echo $id; ?>&ep=<?php echo $prevEp['chapter_index']; ?>" class="btn btn-outline-light btn-sm"><i class="bi bi-chevron-left"></i> Previous</a>
-                            <?php endif; ?>
-                            <?php if ($nextEp): ?>
-                                <a href="watch.php?id=<?php echo $id; ?>&ep=<?php echo $nextEp['chapter_index']; ?>" class="btn btn-outline-light btn-sm">Next <i class="bi bi-chevron-right"></i></a>
-                            <?php endif; ?>
+                            <button id="btn-prev" onclick="loadEpisodeByIndex(currentIndex - 1)" class="btn btn-outline-light btn-sm"><i class="bi bi-chevron-left"></i> Previous</button>
+                            <button id="btn-next" onclick="loadEpisodeByIndex(currentIndex + 1)" class="btn btn-outline-light btn-sm">Next <i class="bi bi-chevron-right"></i></button>
                         </div>
                     </div>
                 <?php else: ?>
@@ -222,9 +231,12 @@ if (!$currentEpisode && !empty($episodes)) {
             </div>
             <div class="col-lg-4">
                 <h5 class="mb-3">Episode List</h5>
-                <div class="ep-list shadow-sm">
+                <div class="ep-list shadow-sm" id="episode-list-container">
                     <?php foreach ($episodes as $ep): ?>
-                        <a href="watch.php?id=<?php echo (int)$id; ?>&ep=<?php echo (int)$ep['chapter_index']; ?>" class="ep-item <?php echo ($currentEpisode && $currentEpisode['id'] == $ep['id']) ? 'active' : ''; ?>">
+                        <a href="watch.php?id=<?php echo (int)$id; ?>&ep=<?php echo (int)$ep['chapter_index']; ?>"
+                           id="ep-link-<?php echo (int)$ep['chapter_index']; ?>"
+                           class="ep-item <?php echo ($currentEpisode && $currentEpisode['id'] == $ep['id']) ? 'active' : ''; ?>"
+                           onclick="loadEpisodeByIndex(<?php echo (int)$ep['chapter_index']; ?>); return false;">
                             <div class="d-flex align-items-center">
                                 <span class="me-3 opacity-75"><?php echo (int)$ep['chapter_index'] + 1; ?></span>
                                 <span><?php echo htmlspecialchars($ep['chapter_name']); ?></span>
@@ -242,12 +254,85 @@ if (!$currentEpisode && !empty($episodes)) {
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        const episodes = <?php echo $episodesJson; ?>;
+        const dramaId = <?php echo (int)$id; ?>;
+        let currentIndex = <?php echo (int)$currentEpisode['chapter_index']; ?>;
+        const video = document.getElementById('main-video');
+        const videoContainer = document.querySelector('.video-container');
+        let activityTimeout;
+
+        function loadEpisodeByIndex(index) {
+            const ep = episodes.find(e => e.index === index);
+            if (!ep) return;
+
+            currentIndex = index;
+
+            // Update UI
+            document.getElementById('current-ep-title').innerText = ep.name;
+            video.poster = ep.img;
+
+            // Update Active in List
+            document.querySelectorAll('.ep-item').forEach(el => el.classList.remove('active'));
+            const activeLink = document.getElementById('ep-link-' + index);
+            if (activeLink) {
+                activeLink.classList.add('active');
+                activeLink.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+
+            // Load Sources
+            const qualityList = document.getElementById('quality-list');
+            const qualityContainer = document.getElementById('quality-selector-container');
+            qualityList.innerHTML = '';
+
+            if (ep.sources && ep.sources.length > 0) {
+                if (ep.sources.length > 1) {
+                    qualityContainer.style.display = 'block';
+                    ep.sources.forEach(source => {
+                        const li = document.createElement('li');
+                        const qualityDisplay = isNaN(source.quality) ? source.quality : source.quality + 'p';
+                        li.innerHTML = `<a class="dropdown-item small" href="#" onclick="changeQuality('${source.videoPath}', '${source.quality}'); return false;">${qualityDisplay}</a>`;
+                        qualityList.appendChild(li);
+                    });
+                } else {
+                    qualityContainer.style.display = 'none';
+                }
+
+                // Set default source
+                const defaultSource = ep.sources[0];
+                video.src = defaultSource.videoPath;
+                document.getElementById('current-quality').innerText = isNaN(defaultSource.quality) ? defaultSource.quality : defaultSource.quality + 'p';
+            }
+
+            video.load();
+            video.play().catch(e => console.log("Auto-play prevented"));
+
+            // Update Navigation Buttons
+            updateNavButtons();
+
+            // Update URL
+            const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + `?id=${dramaId}&ep=${index}`;
+            window.history.pushState({path:newUrl},'',newUrl);
+        }
+
+        function updateNavButtons() {
+            const hasPrev = episodes.some(e => e.index === currentIndex - 1);
+            const hasNext = episodes.some(e => e.index === currentIndex + 1);
+
+            // Bottom buttons
+            document.getElementById('btn-prev').style.display = hasPrev ? 'inline-block' : 'none';
+            document.getElementById('btn-next').style.display = hasNext ? 'inline-block' : 'none';
+
+            // Overlay buttons
+            document.getElementById('overlay-prev').style.display = hasPrev ? 'flex' : 'none';
+            document.getElementById('overlay-prev-placeholder').style.display = hasPrev ? 'none' : 'block';
+            document.getElementById('overlay-next').style.display = hasNext ? 'flex' : 'none';
+            document.getElementById('overlay-next-placeholder').style.display = hasNext ? 'none' : 'block';
+        }
+
         function changeQuality(url, quality) {
-            const video = document.getElementById('main-video');
             const currentTime = video.currentTime;
             const isPaused = video.paused;
 
-            // Create a new source element to ensure the browser switches correctly
             video.src = url;
             video.load();
 
@@ -262,15 +347,28 @@ if (!$currentEpisode && !empty($episodes)) {
             document.getElementById('current-quality').innerText = isNaN(quality) ? quality : quality + 'p';
         }
 
-        const video = document.getElementById('main-video');
-        const videoContainer = document.querySelector('.video-container');
-        let activityTimeout;
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                if (videoContainer.requestFullscreen) {
+                    videoContainer.requestFullscreen();
+                } else if (videoContainer.webkitRequestFullscreen) {
+                    videoContainer.webkitRequestFullscreen();
+                } else if (videoContainer.msRequestFullscreen) {
+                    videoContainer.msRequestFullscreen();
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        }
 
         // Auto-next functionality
         video.addEventListener('ended', function() {
-            <?php if ($nextEp): ?>
-                window.location.href = "watch.php?id=<?php echo $id; ?>&ep=<?php echo $nextEp['chapter_index']; ?>";
-            <?php endif; ?>
+            const nextIndex = currentIndex + 1;
+            if (episodes.some(e => e.index === nextIndex)) {
+                loadEpisodeByIndex(nextIndex);
+            }
         });
 
         // Activity detection to show/hide navigation overlay
@@ -285,6 +383,9 @@ if (!$currentEpisode && !empty($episodes)) {
         videoContainer.addEventListener('mousemove', showControls);
         videoContainer.addEventListener('touchstart', showControls);
         videoContainer.addEventListener('click', showControls);
+
+        // Initial load
+        loadEpisodeByIndex(currentIndex);
     </script>
 </body>
 </html>
