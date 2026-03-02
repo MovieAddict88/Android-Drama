@@ -84,11 +84,13 @@ if ($episodesData && is_array($episodesData)) {
                 $chapterImg = $ep['chapterImg'] ?? '';
 
                 $resolutions = [];
-                if (isset($ep['videoUrl'])) {
-                    $resolutions[] = [
-                        'quality' => 'Default',
-                        'videoPath' => $ep['videoUrl']
-                    ];
+                if (isset($ep['videoList']) && is_array($ep['videoList'])) {
+                    foreach ($ep['videoList'] as $video) {
+                        $resolutions[] = [
+                            'quality' => $video['quality'] ?: 'Default',
+                            'videoPath' => $video['url']
+                        ];
+                    }
                 }
             } else {
                 $chapterId = $ep['chapterId'] ?? '';

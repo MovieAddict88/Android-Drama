@@ -64,9 +64,9 @@ function scrape_reelshort() {
                     foreach ($shelf['books'] as $book) {
                         $items[] = [
                             'bookId' => $book['book_id'] ?? '',
-                            'title' => $book['book_name'] ?? 'Unknown',
-                            'cover' => $book['cover'] ?? '',
-                            'description' => $book['introduction'] ?? ''
+                            'title' => $book['book_title'] ?? $book['book_name'] ?? 'Unknown',
+                            'cover' => $book['book_pic'] ?? $book['cover'] ?? '',
+                            'description' => $book['special_desc'] ?? $book['introduction'] ?? ''
                         ];
                     }
                     if (!empty($items)) {
@@ -100,11 +100,12 @@ function search_reelshort($keyword, $page = 1) {
     if (!is_array($data)) return ['error' => 'Invalid response from search API.'];
 
     $items = [];
-    foreach ($data as $item) {
+    $results = $data['results'] ?? [];
+    foreach ($results as $item) {
         if (isset($item['bookId'])) {
             $items[] = [
                 'bookId' => $item['bookId'],
-                'title' => $item['bookName'] ?? 'Unknown',
+                'title' => $item['title'] ?? $item['bookName'] ?? 'Unknown',
                 'cover' => $item['cover'] ?? ''
             ];
         }
@@ -124,15 +125,31 @@ function fetch_reelshort_detail($bookId) {
 }
 
 /**
- * Fetch ReelShort episodes from Sansekai API
+ * Fetch ReelShort episodes from Sansekai API by iterating through chapters
  */
 function fetch_reelshort_episodes($bookId) {
-    $apiUrl = "https://api.sansekai.my.id/api/reelshort/allepisode?bookId=" . $bookId;
-    $json = fetch_url($apiUrl);
-    if (!$json) return null;
+    $detail = fetch_reelshort_detail($bookId);
+    if (!$detail || !isset($detail['chapters'])) return null;
 
-    $data = json_decode($json, true);
-    return $data;
+    $all_episodes = [];
+    foreach ($detail['chapters'] as $chapter) {
+        $index = $chapter['index'];
+        $apiUrl = "https://api.sansekai.my.id/api/reelshort/episode?bookId=" . $bookId . "&episodeNumber=" . $index;
+        $json = fetch_url($apiUrl);
+        if ($json) {
+            $epData = json_decode($json, true);
+            if ($epData && isset($epData['videoList'])) {
+                $all_episodes[] = [
+                    'chapterId' => $chapter['chapterId'],
+                    'chapterIndex' => $index,
+                    'chapterName' => $chapter['title'],
+                    'videoList' => $epData['videoList'],
+                    'chapterImg' => $detail['cover'] ?? '' // Fallback to drama cover
+                ];
+            }
+        }
+    }
+    return $all_episodes;
 }
 
 /**
