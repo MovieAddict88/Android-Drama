@@ -20,9 +20,8 @@ function fetch_url($url) {
     curl_setopt($ch, CURLOPT_TIMEOUT, 30);
     $result = curl_exec($ch);
     if (curl_errno($ch)) {
-        $error_msg = curl_error($ch);
         curl_close($ch);
-        return "Error: $error_msg";
+        return false;
     }
     curl_close($ch);
     return $result;
@@ -180,7 +179,7 @@ function search_dramabox($keyword, $page = 1) {
 }
 
 /**
- * Fetch all episodes for a given bookId from the Sansekai API
+ * Fetch all episodes for a given bookId from the Sansekai API (DramaBox)
  */
 function fetch_episodes_from_api($bookId) {
     $apiUrl = "https://api.sansekai.my.id/api/dramabox/allepisode?bookId=" . $bookId;
@@ -188,6 +187,111 @@ function fetch_episodes_from_api($bookId) {
     if (!$json) return null;
 
     return json_decode($json, true);
+}
+
+/**
+ * Search ReelShort via Sansekai API
+ */
+function search_reelshort($keyword, $page = 1) {
+    $apiUrl = "https://api.sansekai.my.id/api/reelshort/search?query=" . urlencode($keyword) . "&page=" . (int)$page;
+    $json = fetch_url($apiUrl);
+    if (!$json) return ['error' => 'Failed to fetch search results.'];
+
+    $data = json_decode($json, true);
+    if (!is_array($data)) return ['error' => 'Invalid response from search API.'];
+
+    $items = [];
+    foreach ($data as $item) {
+        if (isset($item['bookId'])) {
+            $items[] = [
+                'bookId' => $item['bookId'],
+                'title' => $item['bookName'] ?? 'Unknown',
+                'cover' => $item['cover'] ?? ''
+            ];
+        }
+    }
+
+    return $items;
+}
+
+/**
+ * Fetch ReelShort detail from Sansekai API
+ */
+function fetch_reelshort_detail($bookId) {
+    $apiUrl = "https://api.sansekai.my.id/api/reelshort/detail?bookId=" . $bookId;
+    $json = fetch_url($apiUrl);
+    if (!$json) return null;
+
+    return json_decode($json, true);
+}
+
+/**
+ * Fetch ReelShort single episode from Sansekai API
+ */
+function fetch_reelshort_episode($bookId, $episodeNumber) {
+    $apiUrl = "https://api.sansekai.my.id/api/reelshort/episode?bookId=$bookId&episodeNumber=$episodeNumber";
+    $json = fetch_url($apiUrl);
+    if (!$json) return null;
+
+    return json_decode($json, true);
+}
+
+/**
+ * Scrape ReelShort website for drama list
+ */
+function scrape_reelshort() {
+    $url = "https://www.reelshort.com/";
+    $html = fetch_url($url);
+    if (!$html || strpos($html, 'Error:') === 0) return ['error' => 'Failed to fetch the website. ' . $html];
+
+    $categories = [];
+
+    // ReelShort uses __NEXT_DATA__ as well
+    // We'll use a more robust way to find it because it might be very large
+    $startToken = '<script id="__NEXT_DATA__" type="application/json">';
+    $endToken = '</script>';
+    $startPos = strpos($html, $startToken);
+    if ($startPos !== false) {
+        $startPos += strlen($startToken);
+        $endPos = strpos($html, $endToken, $startPos);
+        if ($endPos !== false) {
+            $jsonStr = substr($html, $startPos, $endPos - $startPos);
+            $jsonData = json_decode($jsonStr, true);
+
+            $hallInfo = $jsonData['props']['pageProps']['fallback']['/api/video/hall/info'] ?? [];
+            $shelves = $hallInfo['bookShelfList'] ?? $hallInfo['shelves'] ?? $jsonData['props']['pageProps']['shelves'] ?? [];
+
+            foreach ($shelves as $shelf) {
+                $shelfItems = $shelf['books'] ?? $shelf['items'] ?? [];
+                if (!is_array($shelfItems)) continue;
+
+                $items = [];
+                foreach ($shelfItems as $item) {
+                    $bookId = $item['book_id'] ?? $item['bookId'] ?? null;
+                    if ($bookId) {
+                        $items[] = [
+                            'bookId' => $bookId,
+                            'title' => $item['book_title'] ?? $item['bookName'] ?? 'Unknown',
+                            'cover' => $item['book_pic'] ?? $item['cover'] ?? ''
+                        ];
+                    }
+                }
+
+                if (!empty($items)) {
+                    $categories[] = [
+                        'name' => $shelf['bookshelf_name'] ?? $shelf['shelfName'] ?? 'Recommended',
+                        'items' => $items
+                    ];
+                }
+            }
+        }
+    }
+
+    if (empty($categories)) {
+        return ['error' => 'No dramas found on the page. Website structure might have changed.'];
+    }
+
+    return $categories;
 }
 
 /**

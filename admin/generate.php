@@ -3,29 +3,89 @@ require_once '../includes/db.php';
 require_once '../includes/functions.php';
 check_admin_login();
 
+set_time_limit(0);
+
 $bookId = $_GET['bookId'] ?? null;
 $title = $_GET['title'] ?? 'Unknown';
 $cover = $_GET['cover'] ?? '';
+$platform = $_GET['platform'] ?? 'dramabox';
 
 if (!$bookId) {
     die("Missing bookId");
 }
 
-// Try to fetch better metadata from Sansekai detail API if title is unknown
-if ($title == 'Unknown' || empty($title) || empty($cover)) {
-    $detailJson = fetch_url("https://api.sansekai.my.id/api/dramabox/detail?bookId=" . $bookId);
-    if ($detailJson) {
-        $detailData = json_decode($detailJson, true);
-        if (isset($detailData['bookName'])) {
-            $title = $detailData['bookName'];
-        }
-        if (isset($detailData['coverWap']) && empty($cover)) {
-            $cover = $detailData['coverWap'];
+$episodesData = [];
+
+if ($platform === 'reelshort') {
+    $detailData = fetch_reelshort_detail($bookId);
+    if ($detailData && isset($detailData['error'])) {
+        $error = "Sansekai API Error: " . ($detailData['message'] ?? 'Unknown error');
+    } elseif ($detailData) {
+        $title = $detailData['bookName'] ?? $title;
+        $cover = $detailData['cover'] ?? $cover;
+        $description = $detailData['introduction'] ?? '';
+
+        // ReelShort episodes must be fetched one by one since there's no allepisode API
+        // We'll try to fetch up to 200 episodes or until it fails
+        for ($i = 1; $i <= 200; $i++) {
+            $ep = fetch_reelshort_episode($bookId, $i);
+
+            // Check for API errors
+            if ($ep && isset($ep['error'])) {
+                $error = "Sansekai API Error: " . ($ep['message'] ?? 'Unknown error');
+                break;
+            }
+
+            if ($ep && (!empty($ep['videoList']) || isset($ep['videoPath']))) {
+                $videoPathList = [];
+
+                if (!empty($ep['videoList'])) {
+                    foreach ($ep['videoList'] as $video) {
+                        $videoPathList[] = [
+                            'quality' => $video['quality'] ?: 'Default',
+                            'videoPath' => $video['url']
+                        ];
+                    }
+                } elseif (isset($ep['videoPath'])) {
+                    $videoPathList[] = [
+                        'quality' => 'Default',
+                        'videoPath' => $ep['videoPath']
+                    ];
+                }
+
+                // Normalize to match DramaBox structure for the generator loop
+                $episodesData[] = [
+                    'chapterId' => $ep['chapterId'] ?? ($bookId . '-' . $i),
+                    'chapterIndex' => $i - 1,
+                    'chapterName' => $ep['chapterName'] ?? "Episode $i",
+                    'chapterImg' => $ep['chapterImg'] ?? $cover,
+                    'cdnList' => [
+                        [
+                            'videoPathList' => $videoPathList
+                        ]
+                    ]
+                ];
+            } else {
+                break; // Stop when no more episodes
+            }
         }
     }
+} else {
+    // Try to fetch better metadata from Sansekai detail API if title is unknown
+    if ($title == 'Unknown' || empty($title) || empty($cover)) {
+        $detailJson = fetch_url("https://api.sansekai.my.id/api/dramabox/detail?bookId=" . $bookId);
+        if ($detailJson) {
+            $detailData = json_decode($detailJson, true);
+            if (isset($detailData['bookName'])) {
+                $title = $detailData['bookName'];
+            }
+            if (isset($detailData['coverWap']) && empty($cover)) {
+                $cover = $detailData['coverWap'];
+            }
+        }
+    }
+    $episodesData = fetch_episodes_from_api($bookId);
 }
-
-$episodesData = fetch_episodes_from_api($bookId);
 
 if ($episodesData && is_array($episodesData)) {
     try {
@@ -45,14 +105,14 @@ if ($episodesData && is_array($episodesData)) {
         $drama = $stmt->fetch();
 
         if (!$drama) {
-            $stmt = $pdo->prepare("INSERT INTO dramas (book_id, title, cover_img) VALUES (?, ?, ?)");
-            $stmt->execute([$bookId, $title, $cover]);
+            $stmt = $pdo->prepare("INSERT INTO dramas (book_id, title, cover_img, platform, description) VALUES (?, ?, ?, ?, ?)");
+            $stmt->execute([$bookId, $title, $cover, $platform, $description ?? '']);
             $dramaId = $pdo->lastInsertId();
         } else {
             $dramaId = $drama['id'];
-            // Update title/cover if they were previously unknown/empty
-            $stmt = $pdo->prepare("UPDATE dramas SET title = ?, cover_img = ? WHERE id = ? AND (title LIKE 'Drama %' OR cover_img = '')");
-            $stmt->execute([$title, $cover, $dramaId]);
+            // Update title/cover/platform/description if they were previously unknown/empty/default
+            $stmt = $pdo->prepare("UPDATE dramas SET title = ?, cover_img = ?, platform = ?, description = ? WHERE id = ? AND (title LIKE 'Drama %' OR cover_img = '' OR description IS NULL OR description = '')");
+            $stmt->execute([$title, $cover, $platform, $description ?? '', $dramaId]);
         }
 
         // Insert Episodes
@@ -76,7 +136,10 @@ if ($episodesData && is_array($episodesData)) {
                 }
                 // Sort by quality descending
                 usort($resolutions, function($a, $b) {
-                    return $b['quality'] - $a['quality'];
+                    // Handle non-numeric quality
+                    $qa = is_numeric($a['quality']) ? (int)$a['quality'] : 0;
+                    $qb = is_numeric($b['quality']) ? (int)$b['quality'] : 0;
+                    return $qb - $qa;
                 });
             }
             $videoUrl = !empty($resolutions) ? json_encode($resolutions) : '';
@@ -112,7 +175,7 @@ if ($episodesData && is_array($episodesData)) {
         $pdo->rollBack();
         $error = "Error saving to database: " . $e->getMessage();
     }
-} else {
+} elseif (!isset($error)) {
     $error = "Failed to fetch episodes from Sansekai API.";
 }
 ?>
