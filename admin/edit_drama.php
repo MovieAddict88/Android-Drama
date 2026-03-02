@@ -95,7 +95,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <a class="navbar-brand fw-bold" href="index.php"><span style="color: var(--primary-color);">DRAMA</span>ADMIN</a>
             <div class="collapse navbar-collapse">
                 <ul class="navbar-nav me-auto">
-                    <li class="nav-item"><a class="nav-link" href="manage.php">Back to Manage</a></li>
+                    <li class="nav-item"><a class="nav-link" href="index.php">Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link" href="dramabox.php">DramaBox</a></li>
+                    <li class="nav-item"><a class="nav-link" href="reelshort.php">ReelShort</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="manage.php">Manage</a></li>
                 </ul>
             </div>
         </div>

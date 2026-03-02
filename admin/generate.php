@@ -6,26 +6,69 @@ check_admin_login();
 $bookId = $_GET['bookId'] ?? null;
 $title = $_GET['title'] ?? 'Unknown';
 $cover = $_GET['cover'] ?? '';
+$platform = $_GET['platform'] ?? 'dramabox';
+$category = $_GET['category'] ?? 'Trending';
 
 if (!$bookId) {
     die("Missing bookId");
 }
 
-// Try to fetch better metadata from Sansekai detail API if title is unknown
-if ($title == 'Unknown' || empty($title) || empty($cover)) {
-    $detailJson = fetch_url("https://api.sansekai.my.id/api/dramabox/detail?bookId=" . $bookId);
-    if ($detailJson) {
-        $detailData = json_decode($detailJson, true);
-        if (isset($detailData['bookName'])) {
-            $title = $detailData['bookName'];
-        }
-        if (isset($detailData['coverWap']) && empty($cover)) {
-            $cover = $detailData['coverWap'];
+$episodesData = [];
+
+if ($platform === 'reelshort') {
+    // Try to fetch better metadata for ReelShort if title is unknown
+    if ($title == 'Unknown' || empty($title) || empty($cover)) {
+        $detailData = fetch_reelshort_detail($bookId);
+        if ($detailData) {
+            $title = $detailData['title'] ?? $title;
+            $cover = $detailData['cover'] ?? $cover;
         }
     }
-}
 
-$episodesData = fetch_episodes_from_api($bookId);
+    // ReelShort requires sequential episode fetching
+    $episodeNumber = 1;
+    $maxFailures = 2; // Allow some missing indices just in case, though ReelShort is usually strictly sequential
+    $failures = 0;
+
+    while ($failures < $maxFailures) {
+        $ep = fetch_reelshort_episode($bookId, $episodeNumber);
+        // ReelShort response uses 'success' and 'videoList'
+        if ($ep && !isset($ep['error']) && ((isset($ep['success']) && $ep['success']) || !empty($ep['videoList']))) {
+            $ep['chapterIndex'] = $episodeNumber; // Use 1-based index to match API request
+            $ep['chapterName'] = "Episode " . $episodeNumber;
+            $episodesData[] = $ep;
+            $failures = 0; // Reset failures on success
+        } else {
+            $failures++;
+            if ($episodeNumber > 1 && (!isset($ep['error']) || $ep['error'] !== 'Not Found')) {
+                 // Stop if we hit a hard error after having found some episodes
+                 if (isset($ep['error'])) break;
+            }
+        }
+        $episodeNumber++;
+        if ($episodeNumber > 200) break; // Safety limit
+
+        // Check for suspicious/blocked API response early
+        if (isset($ep['error']) && ($ep['error'] === 'Forbidden' || strpos($ep['message'] ?? '', 'blacklist') !== false)) {
+            break;
+        }
+    }
+} else {
+    // DramaBox logic
+    if ($title == 'Unknown' || empty($title) || empty($cover)) {
+        $detailJson = fetch_url("https://api.sansekai.my.id/api/dramabox/detail?bookId=" . $bookId);
+        if ($detailJson) {
+            $detailData = json_decode($detailJson, true);
+            if (isset($detailData['bookName'])) {
+                $title = $detailData['bookName'];
+            }
+            if (isset($detailData['coverWap']) && empty($cover)) {
+                $cover = $detailData['coverWap'];
+            }
+        }
+    }
+    $episodesData = fetch_episodes_from_api($bookId);
+}
 
 if ($episodesData && is_array($episodesData)) {
     try {
@@ -45,14 +88,14 @@ if ($episodesData && is_array($episodesData)) {
         $drama = $stmt->fetch();
 
         if (!$drama) {
-            $stmt = $pdo->prepare("INSERT INTO dramas (book_id, title, cover_img) VALUES (?, ?, ?)");
-            $stmt->execute([$bookId, $title, $cover]);
+            $stmt = $pdo->prepare("INSERT INTO dramas (book_id, title, cover_img, platform, category) VALUES (?, ?, ?, ?, ?)");
+            $stmt->execute([$bookId, $title, $cover, $platform, $category]);
             $dramaId = $pdo->lastInsertId();
         } else {
             $dramaId = $drama['id'];
-            // Update title/cover if they were previously unknown/empty
-            $stmt = $pdo->prepare("UPDATE dramas SET title = ?, cover_img = ? WHERE id = ? AND (title LIKE 'Drama %' OR cover_img = '')");
-            $stmt->execute([$title, $cover, $dramaId]);
+            // Update title/cover/platform/category if they were previously unknown/empty or we want to refresh
+            $stmt = $pdo->prepare("UPDATE dramas SET title = ?, cover_img = ?, platform = ?, category = ? WHERE id = ?");
+            $stmt->execute([$title, $cover, $platform, $category, $dramaId]);
         }
 
         // Insert Episodes
@@ -60,23 +103,38 @@ if ($episodesData && is_array($episodesData)) {
         $sourceStmt = $pdo->prepare("INSERT INTO episode_sources (episode_id, quality, video_url) VALUES (?, ?, ?)");
 
         foreach ($episodesData as $ep) {
-            $chapterId = $ep['chapterId'] ?? '';
+            $chapterId = $ep['chapterId'] ?? ($platform === 'reelshort' ? $bookId . '-' . ($ep['chapterIndex'] ?? 0) : '');
             $chapterIndex = $ep['chapterIndex'] ?? 0;
-            $chapterName = $ep['chapterName'] ?? '';
+            $chapterName = $ep['chapterName'] ?? "Episode $chapterIndex";
             $chapterImg = $ep['chapterImg'] ?? '';
 
             // Find video resolutions
             $resolutions = [];
-            if (isset($ep['cdnList'][0]['videoPathList'])) {
-                foreach ($ep['cdnList'][0]['videoPathList'] as $video) {
+            if ($platform === 'reelshort' && isset($ep['videoList'])) {
+                foreach ($ep['videoList'] as $video) {
                     $resolutions[] = [
-                        'quality' => $video['quality'],
-                        'videoPath' => $video['videoPath']
+                        'quality' => (isset($video['quality']) && $video['quality'] != 0) ? $video['quality'] : 'Default',
+                        'videoPath' => $video['url']
                     ];
                 }
+            } else {
+                $cdnList = $ep['cdnList'] ?? [];
+                if (isset($cdnList[0]['videoPathList'])) {
+                    foreach ($cdnList[0]['videoPathList'] as $video) {
+                        $resolutions[] = [
+                            'quality' => $video['quality'],
+                            'videoPath' => $video['videoPath']
+                        ];
+                    }
+                }
+            }
+
+            if (!empty($resolutions)) {
                 // Sort by quality descending
                 usort($resolutions, function($a, $b) {
-                    return $b['quality'] - $a['quality'];
+                    if ($a['quality'] === 'Default') return 1;
+                    if ($b['quality'] === 'Default') return -1;
+                    return (int)$b['quality'] - (int)$a['quality'];
                 });
             }
             $videoUrl = !empty($resolutions) ? json_encode($resolutions) : '';
@@ -91,9 +149,9 @@ if ($episodesData && is_array($episodesData)) {
                 $episodeId = $pdo->lastInsertId();
             } else {
                 $episodeId = $episode['id'];
-                // Update existing video_url JSON just in case it was a legacy record
-                $updateStmt = $pdo->prepare("UPDATE episodes SET video_url = ? WHERE id = ?");
-                $updateStmt->execute([$videoUrl, $episodeId]);
+                // Update existing record
+                $updateStmt = $pdo->prepare("UPDATE episodes SET video_url = ?, chapter_name = ?, chapter_img = ? WHERE id = ?");
+                $updateStmt->execute([$videoUrl, $chapterName, $chapterImg, $episodeId]);
             }
 
             // Populate episode_sources table
@@ -109,11 +167,14 @@ if ($episodesData && is_array($episodesData)) {
         $pdo->commit();
         $message = "Successfully generated " . count($episodesData) . " episodes for drama: " . htmlspecialchars($title);
     } catch (Exception $e) {
-        $pdo->rollBack();
+        if ($pdo->inTransaction()) $pdo->rollBack();
         $error = "Error saving to database: " . $e->getMessage();
     }
 } else {
-    $error = "Failed to fetch episodes from Sansekai API.";
+    $error = "Failed to fetch episodes from Sansekai API. Platform: $platform, Book ID: $bookId";
+    if (isset($ep['error'])) {
+        $error .= "<br><br><div class='alert alert-custom p-3'><i class='bi bi-exclamation-octagon-fill me-2'></i> <strong>API ERROR:</strong> " . htmlspecialchars($ep['message'] ?? $ep['error']) . "</div>";
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -123,6 +184,15 @@ if ($episodesData && is_array($episodesData)) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Generating Content - Drama Admin</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        .alert-custom {
+            background-color: rgba(255, 0, 85, 0.1);
+            border: 1px solid #ff0055;
+            color: #ff0055;
+            border-radius: 12px;
+        }
+    </style>
 </head>
 <body class="bg-light">
     <div class="container py-5 text-center">
@@ -132,7 +202,7 @@ if ($episodesData && is_array($episodesData)) {
                 <h3>Done!</h3>
                 <p><?php echo $message; ?></p>
                 <div class="mt-4">
-                    <a href="dramabox.php" class="btn btn-outline-primary">Back to DramaBox</a>
+                    <a href="<?php echo ($platform === 'reelshort' ? 'reelshort.php' : 'dramabox.php'); ?>" class="btn btn-outline-primary">Back to <?php echo ucfirst($platform); ?></a>
                     <a href="../index.php" class="btn btn-primary" target="_blank">View Site</a>
                 </div>
             </div>
@@ -141,7 +211,7 @@ if ($episodesData && is_array($episodesData)) {
                 <h3>Error</h3>
                 <p><?php echo $error; ?></p>
                 <div class="mt-4">
-                    <a href="dramabox.php" class="btn btn-primary">Try Again</a>
+                    <a href="<?php echo ($platform === 'reelshort' ? 'reelshort.php' : 'dramabox.php'); ?>" class="btn btn-primary">Try Again</a>
                 </div>
             </div>
         <?php endif; ?>

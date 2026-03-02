@@ -5,7 +5,7 @@ check_admin_login();
 
 $platforms = [
     ['name' => 'DramaBox', 'url' => 'dramabox.php', 'active' => true, 'logo' => 'https://www.dramaboxdb.com/images/logo.png'],
-    ['name' => 'ReelShort', 'url' => '#', 'active' => false, 'logo' => 'https://www.reelshort.com/favicon.ico'],
+    ['name' => 'ReelShort', 'url' => 'reelshort.php', 'active' => true, 'logo' => 'https://www.reelshort.com/favicon.ico'],
     ['name' => 'ShortMax', 'url' => '#', 'active' => false, 'logo' => 'https://shortmax.app/favicon.ico'],
     ['name' => 'FlickReels', 'url' => '#', 'active' => false, 'logo' => 'https://www.flickreels.net/favicon.ico'],
     ['name' => 'NetShort', 'url' => '#', 'active' => false, 'logo' => 'https://netshort.com/favicon.ico']
@@ -45,6 +45,7 @@ $episode_count = $stmt->fetchColumn();
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item"><a class="nav-link active" href="index.php">Dashboard</a></li>
                     <li class="nav-item"><a class="nav-link" href="dramabox.php">DramaBox</a></li>
+                    <li class="nav-item"><a class="nav-link" href="reelshort.php">ReelShort</a></li>
                     <li class="nav-item"><a class="nav-link" href="manage.php">Manage</a></li>
                 </ul>
                 <ul class="navbar-nav ms-auto">
