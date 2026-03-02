@@ -160,10 +160,14 @@ function scrape_dramabox() {
 function search_dramabox($keyword, $page = 1) {
     $apiUrl = "https://api.sansekai.my.id/api/dramabox/search?query=" . urlencode($keyword) . "&page=" . (int)$page;
     $json = fetch_url($apiUrl);
-    if (!$json) return ['error' => 'Failed to fetch search results.'];
+    if (!$json) return ['error' => 'Failed to reach search API.'];
 
     $data = json_decode($json, true);
-    if (!is_array($data)) return ['error' => 'Invalid response from search API.'];
+    if (!is_array($data)) return ['error' => 'Invalid JSON response from search API.'];
+
+    if (isset($data['error']) || isset($data['message'])) {
+        return ['error' => $data['message'] ?? $data['error'] ?? 'API Error'];
+    }
 
     $items = [];
     foreach ($data as $item) {
@@ -185,9 +189,16 @@ function search_dramabox($keyword, $page = 1) {
 function fetch_episodes_from_api($bookId) {
     $apiUrl = "https://api.sansekai.my.id/api/dramabox/allepisode?bookId=" . $bookId;
     $json = fetch_url($apiUrl);
-    if (!$json) return null;
+    if (!$json) return ['error' => 'Failed to reach episode API.'];
 
-    return json_decode($json, true);
+    $data = json_decode($json, true);
+    if (!is_array($data)) return ['error' => 'Invalid JSON response from episode API.'];
+
+    if (isset($data['error']) || isset($data['message'])) {
+        return ['error' => $data['message'] ?? $data['error'] ?? 'API Episode Error'];
+    }
+
+    return $data;
 }
 
 /**

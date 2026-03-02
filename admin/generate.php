@@ -59,18 +59,25 @@ if ($platform === 'reelshort') {
     $detailJson = fetch_url("https://api.sansekai.my.id/api/dramabox/detail?bookId=" . $bookId);
     if ($detailJson) {
         $detailData = json_decode($detailJson, true);
-        if (isset($detailData['bookName']) && !empty($detailData['bookName'])) {
-            $title = $detailData['bookName'];
+        if ($detailData) {
+            if (isset($detailData['error']) || isset($detailData['message'])) {
+                 $error = "DramaBox Detail API Error: " . ($detailData['message'] ?? $detailData['error']);
+            } else {
+                if (isset($detailData['bookName']) && !empty($detailData['bookName'])) {
+                    $title = $detailData['bookName'];
+                }
+                if (isset($detailData['coverWap']) && !empty($detailData['coverWap'])) {
+                    $cover = $detailData['coverWap'];
+                }
+                $description = $detailData['introduction'] ?? '';
+            }
         }
-        if (isset($detailData['coverWap']) && !empty($detailData['coverWap'])) {
-            $cover = $detailData['coverWap'];
-        }
-        $description = $detailData['introduction'] ?? '';
     }
 
-    $rawEpisodes = fetch_episodes_from_api($bookId);
-    if ($rawEpisodes && is_array($rawEpisodes)) {
-        foreach ($rawEpisodes as $ep) {
+    if (!isset($error)) {
+        $rawEpisodes = fetch_episodes_from_api($bookId);
+        if ($rawEpisodes && is_array($rawEpisodes) && !isset($rawEpisodes['error'])) {
+            foreach ($rawEpisodes as $ep) {
             $resolutions = [];
             if (isset($ep['cdnList'][0]['videoPathList'])) {
                 foreach ($ep['cdnList'][0]['videoPathList'] as $video) {
@@ -80,13 +87,16 @@ if ($platform === 'reelshort') {
                     ];
                 }
             }
-            $episodesData[] = [
-                'chapterId' => $ep['chapterId'] ?? '',
-                'chapterIndex' => $ep['chapterIndex'] ?? 0,
-                'chapterName' => $ep['chapterName'] ?? '',
-                'chapterImg' => $ep['chapterImg'] ?? '',
-                'resolutions' => $resolutions
-            ];
+                $episodesData[] = [
+                    'chapterId' => $ep['chapterId'] ?? '',
+                    'chapterIndex' => $ep['chapterIndex'] ?? 0,
+                    'chapterName' => $ep['chapterName'] ?? '',
+                    'chapterImg' => $ep['chapterImg'] ?? '',
+                    'resolutions' => $resolutions
+                ];
+            }
+        } elseif (isset($rawEpisodes['error'])) {
+            $error = "DramaBox Episode API Error: " . $rawEpisodes['error'];
         }
     }
 }
