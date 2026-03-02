@@ -16,7 +16,7 @@ if (!$bookId) {
 }
 
 if ($platform === 'reelshort') {
-    // ReelShort Generation Logic
+    // ReelShort Generation Logic - COMPLETELY SEPARATE
     $detail = fetch_reelshort_detail($bookId);
     if (!$detail || isset($detail['error'])) {
         $error = $detail['error'] ?? "Failed to fetch ReelShort drama details.";
@@ -47,13 +47,18 @@ if ($platform === 'reelshort') {
                 // Clear old episodes
                 $pdo->prepare("DELETE FROM episodes WHERE drama_id = ?")->execute([$dramaId]);
 
-                $stmt = $pdo->prepare("INSERT INTO episodes (drama_id, chapter_index, chapter_name, video_url) VALUES (?, ?, ?, ?)");
+                $stmt = $pdo->prepare("INSERT INTO episodes (drama_id, chapter_id, chapter_index, chapter_name, video_url, chapter_img) VALUES (?, ?, ?, ?, ?, ?)");
+                $sourceStmt = $pdo->prepare("INSERT INTO episode_sources (episode_id, quality, video_url) VALUES (?, ?, ?)");
 
                 foreach ($detail['chapters'] as $index => $chapter) {
                     $episodeNum = $index + 1;
                     $epData = fetch_reelshort_episode($bookId, $episodeNum);
 
                     if ($epData && isset($epData['video_list'])) {
+                        $chapterId = $epData['chapterId'] ?? ($bookId . "_" . $episodeNum);
+                        $chapterImg = $epData['chapterImg'] ?? $cover;
+                        $epTitle = $epData['chapterName'] ?? "Episode $episodeNum";
+
                         $resolutions = [];
                         foreach ($epData['video_list'] as $video) {
                             $resolutions[] = [
@@ -62,8 +67,14 @@ if ($platform === 'reelshort') {
                             ];
                         }
                         $videoUrl = json_encode($resolutions);
-                        $epTitle = $epData['chapterName'] ?? "Episode $episodeNum";
-                        $stmt->execute([$dramaId, $index, $epTitle, $videoUrl]);
+
+                        $stmt->execute([$dramaId, $chapterId, $index, $epTitle, $videoUrl, $chapterImg]);
+                        $episodeId = $pdo->lastInsertId();
+
+                        // Populate episode_sources
+                        foreach ($resolutions as $res) {
+                            $sourceStmt->execute([$episodeId, $res['quality'], $res['videoPath']]);
+                        }
                     }
                 }
             }
