@@ -59,6 +59,49 @@ if (!$currentEpisode && !empty($episodes)) {
         .quality-selector { position: absolute; top: 10px; right: 10px; z-index: 10; }
         .quality-btn { background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); color: white; font-size: 0.8rem; padding: 2px 8px; border-radius: 4px; backdrop-filter: blur(4px); }
         .quality-btn:hover { background: rgba(255,255,255,0.1); color: white; }
+
+        /* Player Navigation Overlay */
+        .video-nav-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: none;
+            z-index: 5;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .video-container.user-active .video-nav-overlay {
+            opacity: 1;
+        }
+        .nav-overlay-btn {
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            border: none;
+            padding: 20px 10px;
+            cursor: pointer;
+            pointer-events: auto;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            transition: background 0.2s;
+        }
+        .nav-overlay-btn:hover {
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+        }
+        .nav-overlay-prev {
+            border-radius: 0 8px 8px 0;
+        }
+        .nav-overlay-next {
+            border-radius: 8px 0 0 8px;
+        }
     </style>
 </head>
 <body>
@@ -116,6 +159,16 @@ if (!$currentEpisode && !empty($episodes)) {
                         }
                     }
                     $defaultSource = $sources[0]['videoPath'] ?? '';
+
+                    $prevEp = null;
+                    $nextEp = null;
+                    foreach ($episodes as $idx => $ep) {
+                        if ($ep['id'] == $currentEpisode['id']) {
+                            $prevEp = $episodes[$idx - 1] ?? null;
+                            $nextEp = $episodes[$idx + 1] ?? null;
+                            break;
+                        }
+                    }
                     ?>
                     <div class="video-container mb-3 shadow position-relative">
                         <?php if (count($sources) > 1): ?>
@@ -134,21 +187,27 @@ if (!$currentEpisode && !empty($episodes)) {
                             <source src="<?php echo htmlspecialchars($defaultSource); ?>" type="video/mp4">
                             Your browser does not support the video tag.
                         </video>
+                        <div class="video-nav-overlay">
+                            <?php if ($prevEp): ?>
+                                <a href="watch.php?id=<?php echo $id; ?>&ep=<?php echo $prevEp['chapter_index']; ?>" class="nav-overlay-btn nav-overlay-prev">
+                                    <i class="bi bi-chevron-left"></i>
+                                </a>
+                            <?php else: ?>
+                                <div></div>
+                            <?php endif; ?>
+
+                            <?php if ($nextEp): ?>
+                                <a href="watch.php?id=<?php echo $id; ?>&ep=<?php echo $nextEp['chapter_index']; ?>" class="nav-overlay-btn nav-overlay-next">
+                                    <i class="bi bi-chevron-right"></i>
+                                </a>
+                            <?php else: ?>
+                                <div></div>
+                            <?php endif; ?>
+                        </div>
                     </div>
                     <div class="d-flex justify-content-between align-items-center mb-4">
                         <h4 class="mb-0"><?php echo htmlspecialchars($currentEpisode['chapter_name']); ?></h4>
                         <div>
-                            <?php
-                            $prevEp = null;
-                            $nextEp = null;
-                            foreach ($episodes as $idx => $ep) {
-                                if ($ep['id'] == $currentEpisode['id']) {
-                                    $prevEp = $episodes[$idx - 1] ?? null;
-                                    $nextEp = $episodes[$idx + 1] ?? null;
-                                    break;
-                                }
-                            }
-                            ?>
                             <?php if ($prevEp): ?>
                                 <a href="watch.php?id=<?php echo $id; ?>&ep=<?php echo $prevEp['chapter_index']; ?>" class="btn btn-outline-light btn-sm"><i class="bi bi-chevron-left"></i> Previous</a>
                             <?php endif; ?>
@@ -202,6 +261,30 @@ if (!$currentEpisode && !empty($episodes)) {
 
             document.getElementById('current-quality').innerText = isNaN(quality) ? quality : quality + 'p';
         }
+
+        const video = document.getElementById('main-video');
+        const videoContainer = document.querySelector('.video-container');
+        let activityTimeout;
+
+        // Auto-next functionality
+        video.addEventListener('ended', function() {
+            <?php if ($nextEp): ?>
+                window.location.href = "watch.php?id=<?php echo $id; ?>&ep=<?php echo $nextEp['chapter_index']; ?>";
+            <?php endif; ?>
+        });
+
+        // Activity detection to show/hide navigation overlay
+        function showControls() {
+            videoContainer.classList.add('user-active');
+            clearTimeout(activityTimeout);
+            activityTimeout = setTimeout(() => {
+                videoContainer.classList.remove('user-active');
+            }, 3000);
+        }
+
+        videoContainer.addEventListener('mousemove', showControls);
+        videoContainer.addEventListener('touchstart', showControls);
+        videoContainer.addEventListener('click', showControls);
     </script>
 </body>
 </html>
