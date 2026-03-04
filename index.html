@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StarMaxx - Streaming Experience</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="logo">
+                <h1>Star<span>Maxx</span></h1>
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="#" class="active">Home</a></li>
+                    <li><a href="#">Movies</a></li>
+                    <li><a href="#">TV Shows</a></li>
+                </ul>
+            </nav>
+            <div class="search-bar">
+                <input type="text" id="searchInput" placeholder="Search movies, shows...">
+                <button id="searchBtn">Search</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <section id="player-section" class="hidden">
+            <div class="video-container">
+                <video id="mainPlayer" controls autoplay>
+                    <source src="" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+                <button id="closePlayer" class="close-btn">&times;</button>
+            </div>
+            <div class="video-info">
+                <h2 id="nowPlayingTitle">Movie Title</h2>
+                <p id="nowPlayingDesc">Movie description goes here...</p>
+            </div>
+        </section>
+
+        <section id="trending">
+            <h2>Trending Now</h2>
+            <div id="movieGrid" class="movie-grid">
+                <!-- Movie cards will be injected here -->
+                <div class="loading">Loading content...</div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 Star SineMax. All rights reserved.</p>
+            <div class="footer-links">
+                <a href="#">Privacy Policy</a>
+                <a href="#">Terms of Service</a>
+                <a href="#">Contact Support</a>
+            </div>
+        </div>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
