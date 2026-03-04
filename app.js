@@ -7,6 +7,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const closePlayer = document.getElementById('closePlayer');
     const searchInput = document.getElementById('searchInput');
     const searchBtn = document.getElementById('searchBtn');
+    const navLinks = document.querySelectorAll('nav a');
+    const sectionTitle = document.querySelector('#trending h2');
 
     // Configuration from instructions
     const BASE_URL = 'https://api.starsinemax.com/api';
@@ -17,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
         {
             id: 1,
             title: "Casting Call: Actors",
+            category: "Movie",
             description: "Join our upcoming production. We are looking for talented male actors for various roles.",
             thumbnail: "https://starsinemax.com/ads/audition/ads-actor.JPG",
             videoUrl: DEFAULT_VIDEO
@@ -24,6 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
         {
             id: 2,
             title: "Casting Call: Actresses",
+            category: "Movie",
             description: "Exciting opportunities for female leads and supporting characters in our new drama series.",
             thumbnail: "https://starsinemax.com/ads/audition/ads-actress.JPG",
             videoUrl: DEFAULT_VIDEO
@@ -31,6 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
         {
             id: 3,
             title: "Teen Star Auditions",
+            category: "TV Show",
             description: "Are you the next big teen star? We are scouting for young talent to shine on the big screen.",
             thumbnail: "https://starsinemax.com/ads/audition/starmaxx-casting-call.png",
             videoUrl: DEFAULT_VIDEO
@@ -38,6 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
         {
             id: 4,
             title: "Charismatic Models Wanted",
+            category: "Movie",
             description: "Fashion, commercials, and more. We need charismatic faces to represent our brand.",
             thumbnail: "https://starsinemax.com/ads/audition/ads-starmaxx-charismatic.png",
             videoUrl: DEFAULT_VIDEO
@@ -45,13 +51,15 @@ document.addEventListener('DOMContentLoaded', () => {
         {
             id: 5,
             title: "StarMaxx Originals",
+            category: "TV Show",
             description: "Explore the latest original content produced exclusively by Star SineMax studios.",
             thumbnail: "https://starsinemax.com/assets/img/starmax-logo-black.png",
             videoUrl: DEFAULT_VIDEO
         }
     ];
 
-    let currentMovies = [...mockMovies];
+    let allMovies = [...mockMovies];
+    let currentFilter = 'All';
 
     /**
      * Attempts to fetch movies from the StarMaxx API.
@@ -72,9 +80,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (response.ok) {
                 const data = await response.json();
                 if (Array.isArray(data) && data.length > 0) {
-                    currentMovies = data.map(item => ({
+                    allMovies = data.map(item => ({
                         id: item.id || Math.random(),
                         title: item.title || item.name || "Untitled",
+                        category: item.category || (Math.random() > 0.5 ? "Movie" : "TV Show"),
                         description: item.description || item.plot || "No description available.",
                         thumbnail: item.thumbnail || item.poster || "https://starsinemax.com/assets/img/starmax-logo-black.png",
                         videoUrl: item.videoUrl || item.url || DEFAULT_VIDEO
@@ -87,7 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("API Fetch Error (likely CORS or Offline):", error.message);
             console.log("Falling back to StarMaxx production assets.");
         }
-        displayMovies(currentMovies);
+        applyFilter();
     }
 
     /**
@@ -143,13 +152,47 @@ document.addEventListener('DOMContentLoaded', () => {
         playerSection.classList.add('hidden');
     });
 
-    searchBtn.addEventListener('click', () => {
+    function applyFilter() {
+        let filtered = allMovies;
+
+        if (currentFilter !== 'All') {
+            filtered = allMovies.filter(m => m.category === currentFilter);
+            sectionTitle.textContent = currentFilter === 'Movie' ? 'Movies' : 'TV Shows';
+        } else {
+            sectionTitle.textContent = 'Trending Now';
+        }
+
         const query = searchInput.value.toLowerCase().trim();
-        const filtered = currentMovies.filter(m =>
-            m.title.toLowerCase().includes(query) ||
-            (m.description && m.description.toLowerCase().includes(query))
-        );
+        if (query) {
+            filtered = filtered.filter(m =>
+                m.title.toLowerCase().includes(query) ||
+                (m.description && m.description.toLowerCase().includes(query))
+            );
+        }
+
         displayMovies(filtered);
+    }
+
+    navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+
+            // UI Update
+            navLinks.forEach(l => l.classList.remove('active'));
+            link.classList.add('active');
+
+            // Logic Update
+            const id = link.id;
+            if (id === 'nav-home') currentFilter = 'All';
+            else if (id === 'nav-movies') currentFilter = 'Movie';
+            else if (id === 'nav-tv') currentFilter = 'TV Show';
+
+            applyFilter();
+        });
+    });
+
+    searchBtn.addEventListener('click', () => {
+        applyFilter();
     });
 
     searchInput.addEventListener('keypress', (e) => {
