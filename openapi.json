@@ -1,0 +1,86 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Drama Scraper API Hub",
+    "description": "Mimic of sansekai API for drama platforms.",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/dramabox/foryou": {
+      "get": {
+        "tags": ["DramaBox"],
+        "summary": "Trending Dramas",
+        "responses": { "200": { "description": "Success" } }
+      }
+    },
+    "/dramabox/search": {
+      "get": {
+        "tags": ["DramaBox"],
+        "summary": "Search Dramas",
+        "parameters": [{ "name": "query", "in": "query", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Success" } }
+      }
+    },
+    "/reelshort/foryou": {
+      "get": {
+        "tags": ["ReelShort"],
+        "summary": "ReelShort Recommendations",
+        "responses": { "200": { "description": "Success" } }
+      }
+    },
+    "/shortmax/latest": {
+      "get": {
+        "tags": ["ShortMax"],
+        "summary": "Latest Dramas",
+        "responses": { "200": { "description": "Success" } }
+      }
+    },
+    "/shortmax/search": {
+      "get": {
+        "tags": ["ShortMax"],
+        "summary": "Search Dramas",
+        "parameters": [{ "name": "query", "in": "query", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Success" } }
+      }
+    },
+    "/netshort/foryou": {
+      "get": {
+        "tags": ["NetShort"],
+        "summary": "For You",
+        "responses": { "200": { "description": "Success" } }
+      }
+    },
+    "/melolo/foryou": {
+      "get": {
+        "tags": ["Melolo"],
+        "summary": "For You",
+        "responses": { "200": { "description": "Success" } }
+      }
+    },
+    "/ai/chatgpt": {
+      "get": {
+        "tags": ["AI"],
+        "summary": "ChatGPT Simulation",
+        "parameters": [{ "name": "prompt", "in": "query", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Success" } }
+      }
+    },
+    "/uploader": {
+      "post": {
+        "tags": ["Uploader"],
+        "summary": "Upload File",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": { "file": { "type": "string", "format": "binary" } }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Success" } }
+      }
+    }
+  }
+}
