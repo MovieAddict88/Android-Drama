@@ -13,7 +13,9 @@ $requestUri = $_SERVER['REQUEST_URI'] ?? '/';
 $scriptName = $_SERVER['SCRIPT_NAME'] ?? '/index.php';
 $basePath = dirname($scriptName);
 if ($basePath === DIRECTORY_SEPARATOR) $basePath = '';
-$path = str_replace($basePath, '', $requestUri);
+
+// Support both directly accessed index.php and rewritten URLs
+$path = str_replace([$basePath, '/index.php'], '', $requestUri);
 $path = explode('?', $path)[0];
 $path = trim($path, '/');
 
