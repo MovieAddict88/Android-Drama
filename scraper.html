@@ -366,10 +366,6 @@
                             loadMoreBtn.classList.remove('visible');
                         }
                         success = true;
-                    } else if (!append) {
-                        grid.innerHTML = '<div class="loading-spinner">No results found.</div>';
-                        loadMoreBtn.classList.remove('visible');
-                        success = true;
                     }
                 }
             } catch (e) {
@@ -435,8 +431,13 @@
 
             if (!success) {
                 if (!append) {
-                    status.textContent = 'Offline Discovery Mode';
-                    useFallbackData();
+                    if (keyword) {
+                        grid.innerHTML = `<div class="loading-spinner">No results found for "${keyword}".</div>`;
+                        status.textContent = 'Search Complete';
+                    } else {
+                        status.textContent = 'Offline Discovery Mode';
+                        useFallbackData();
+                    }
                 } else {
                     showToast("No more results available.");
                 }
