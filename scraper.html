@@ -33,9 +33,24 @@
             padding-bottom: 20px;
             border-bottom: 1px solid #333;
             margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
         }
+        .brand { display: flex; align-items: center; gap: 15px; }
         h1 { margin: 0; font-size: 28px; color: var(--primary); font-weight: 800; letter-spacing: -1px; }
         #status { font-size: 14px; color: var(--text-dim); background: #222; padding: 4px 12px; border-radius: 20px; }
+        .header-actions { display: flex; align-items: center; gap: 10px; }
+        .btn-clear {
+            background: #333;
+            color: #eee;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-clear:hover { background: #444; color: #fff; }
         .controls {
             width: 100%;
             max-width: 900px;
@@ -172,8 +187,13 @@
 </head>
 <body>
     <header>
-        <h1>DramaWave Scraper</h1>
-        <div id="status">Initializing...</div>
+        <div class="brand">
+            <h1>DramaWave Scraper</h1>
+            <div id="status">Initializing...</div>
+        </div>
+        <div class="header-actions">
+            <button class="btn-clear" onclick="clearHistory()">Clear Copied History</button>
+        </div>
     </header>
 
     <div class="controls">
@@ -200,7 +220,10 @@
         const searchInput = document.getElementById('search-input');
         const urlInput = document.getElementById('url-input');
 
-        const API_BASE = 'https://api.mydramawave.com';
+        // Primary API (unencrypted, CORS friendly)
+        const PRIMARY_API = 'https://dramawave.dramabos.my.id';
+        // Secondary API (encrypted, needs proxy)
+        const SECONDARY_API = 'https://api.mydramawave.com';
         const PROXY = 'https://api.allorigins.win/raw?url=';
         const ENCRYPTION_KEY = '2r36789f45q01ae5';
 
@@ -235,38 +258,9 @@
             }
         }
 
-        async function fetchWithAuth(url, options = {}) {
-            const headers = {
-                'Platform': 'h5',
-                'Version': '1.0.0',
-                'App-Name': 'com.dramawave.h5',
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-                'Skip-Encrypt': '1'
-            };
-
-            try {
-                const response = await fetch(`${PROXY}${encodeURIComponent(url)}`, {
-                    ...options,
-                    headers: { ...headers, ...options.headers }
-                });
-
-                const text = await response.text();
-                try {
-                    return JSON.parse(text);
-                } catch {
-                    return decrypt(text);
-                }
-            } catch (error) {
-                console.error('Fetch error:', error);
-                return null;
-            }
-        }
-
         async function loadDramas(keyword = '') {
             status.textContent = keyword ? `Searching...` : 'Syncing Library...';
 
-            // Set a timeout to trigger fallback if API is slow
             const fallbackTimeout = setTimeout(() => {
                 if (!keyword && grid.innerHTML.includes('Waking up')) {
                     status.textContent = 'Offline Discovery Mode (Timeout)';
@@ -274,43 +268,82 @@
                 }
             }, 5000);
 
-            let endpoint = `${API_BASE}/h5-api/search/hot-list`;
-            let method = 'POST';
-            let body = '{}';
-
-            if (keyword) {
-                endpoint = `${API_BASE}/h5-api/search/drama`;
-                body = JSON.stringify({ keyword, page: 1, page_size: 20 });
-            }
-
             try {
-                const response = await fetchWithAuth(endpoint, { method, body });
+                // Try Primary API first
+                const url = keyword
+                    ? `${PRIMARY_API}/api/search?q=${encodeURIComponent(keyword)}&lang=en`
+                    : `${PRIMARY_API}/api/recommend?lang=en`;
+
+                const response = await fetch(url);
+                const data = await response.json();
+
                 clearTimeout(fallbackTimeout);
 
-                if (response && response.code === 200 && response.data) {
-                    const items = response.data.items || response.data.list || [];
+                if (data && (data.items || data.list)) {
+                    const items = data.items || data.list || [];
                     renderContent(items);
                     status.textContent = `Library Ready (${items.length} items)`;
+                    return;
+                }
+            } catch (e) {
+                console.warn('Primary API failed, trying secondary...', e);
+            }
+
+            // Secondary API logic (Legacy/Fallback)
+            try {
+                let endpoint = `${SECONDARY_API}/h5-api/search/hot-list`;
+                let method = 'POST';
+                let body = '{}';
+
+                if (keyword) {
+                    endpoint = `${SECONDARY_API}/h5-api/search/drama`;
+                    body = JSON.stringify({ keyword, page: 1, page_size: 20 });
+                }
+
+                const headers = {
+                    'Platform': 'h5',
+                    'Version': '1.0.0',
+                    'App-Name': 'com.dramawave.h5',
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                };
+
+                const response = await fetch(`${PROXY}${encodeURIComponent(endpoint)}`, {
+                    method,
+                    body,
+                    headers
+                });
+
+                const text = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch {
+                    data = decrypt(text);
+                }
+
+                clearTimeout(fallbackTimeout);
+
+                if (data && data.code === 200 && data.data) {
+                    const items = data.data.items || data.data.list || [];
+                    renderContent(items);
+                    status.textContent = `Library Ready (Fallback API)`;
                 } else {
-                    if (!keyword) {
-                        status.textContent = 'Offline Discovery Mode';
-                        useFallbackData();
-                    } else {
-                        grid.innerHTML = '<div class="loading-spinner">No dramas found in the records.</div>';
-                        status.textContent = 'Search empty';
-                    }
+                    throw new Error('Secondary API failed');
                 }
             } catch (e) {
                 clearTimeout(fallbackTimeout);
                 if (!keyword) {
-                    status.textContent = 'Offline Discovery Mode (Error)';
+                    status.textContent = 'Offline Discovery Mode';
                     useFallbackData();
+                } else {
+                    grid.innerHTML = '<div class="loading-spinner">No dramas found in the records.</div>';
+                    status.textContent = 'Search empty';
                 }
             }
         }
 
         function useFallbackData() {
-            // Extended fallback list of popular series
             const fallback = [
                 { id: 'MZS0CyDOtb', title: "The CEO's Secret Love", poster: 'https://static-v1.mydramawave.com/frontend_static/Logo.png' },
                 { id: '2Uaq4xlsza', title: 'My Husband is a Hero', poster: 'https://static-v1.mydramawave.com/frontend_static/Logo.png' },
@@ -330,14 +363,17 @@
 
         function renderContent(items) {
             grid.innerHTML = '';
-            if (items.length === 0) {
+            if (!items || items.length === 0) {
                 grid.innerHTML = '<div class="loading-spinner">No items found.</div>';
                 return;
             }
             items.forEach(item => {
-                const id = item.series_id || item.id || item.key;
+                // Handle different field names from different APIs
+                const id = item.playlet_id || item.id || item.series_id || item.key;
                 const title = item.title || item.name || 'Drama Series';
-                const poster = item.poster || item.cover || item.cover_url || 'https://static-v1.mydramawave.com/frontend_static/Logo.png';
+                const poster = item.cover || item.poster || item.cover_url || 'https://static-v1.mydramawave.com/frontend_static/Logo.png';
+
+                if (!id) return;
 
                 const card = document.createElement('div');
                 card.className = `card ${copiedIds.includes(id) ? 'is-copied' : ''}`;
@@ -355,6 +391,15 @@
             });
         }
 
+        function clearHistory() {
+            if (confirm('Clear all "COPIED" indicators?')) {
+                copiedIds = [];
+                localStorage.removeItem('copiedIds');
+                document.querySelectorAll('.card').forEach(c => c.classList.remove('is-copied'));
+                showToast('History Cleared');
+            }
+        }
+
         function copyToClipboard(id, element) {
             navigator.clipboard.writeText(id).then(() => {
                 showToast(`ID Copied: ${id}`);
@@ -366,13 +411,15 @@
 
                 if (element) {
                     element.classList.add('is-copied');
-                } else {
-                    document.querySelectorAll('.card').forEach(c => {
-                        if (c.querySelector('.id-label').textContent === id) {
-                            c.classList.add('is-copied');
-                        }
-                    });
                 }
+
+                // Sync all cards with this ID
+                document.querySelectorAll('.card').forEach(c => {
+                    const label = c.querySelector('.id-label');
+                    if (label && label.textContent.trim() === id) {
+                        c.classList.add('is-copied');
+                    }
+                });
             }).catch(err => {
                 const input = document.createElement('input');
                 input.value = id;
