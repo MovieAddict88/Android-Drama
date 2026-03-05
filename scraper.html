@@ -103,7 +103,7 @@
             border-color: var(--primary);
             box-shadow: 0 10px 25px rgba(233, 30, 99, 0.4);
         }
-        .card img {
+        .card img, .card .card-img {
             width: 100%;
             aspect-ratio: 2/3;
             object-fit: cover;
@@ -248,9 +248,11 @@
         const urlInput = document.getElementById('url-input');
         const loadMoreBtn = document.getElementById('load-more-btn');
 
-        // Primary API (unencrypted, CORS friendly)
+        // Primary API (High Reliability Vercel Mirror)
+        const VERCEL_API = 'https://tkapiv1.vercel.app';
+        // Secondary API (Direct Mirror)
         const PRIMARY_API = 'https://dramawave.dramabos.my.id';
-        // Secondary API (encrypted, needs proxy)
+        // Tertiary API (Encrypted, needs proxy)
         const SECONDARY_API = 'https://api.mydramawave.com';
         const PROXY = 'https://api.allorigins.win/raw?url=';
         const ENCRYPTION_KEY = '2r36789f45q01ae5';
@@ -305,52 +307,57 @@
             loadMoreBtn.textContent = 'Loading...';
             status.textContent = keyword ? `Searching "${keyword}" (Page ${page})...` : `Syncing Library (Page ${page})...`;
 
+            let success = false;
+
+            // Try Primary API (Vercel/Mirror)
             try {
                 let url = keyword
                     ? `${PRIMARY_API}/api/search?q=${encodeURIComponent(keyword)}&lang=en&page=${page}`
-                    : `${PRIMARY_API}/api/recommend?lang=en&page=${page}`;
+                    : `${VERCEL_API}/api/home`;
 
                 if (append && nextParams && !keyword) {
-                    url = `${PRIMARY_API}/api/recommend?lang=en&${nextParams}`;
+                    url = `${VERCEL_API}/api/home?${nextParams}`;
                 }
 
                 if (append && !keyword && !nextParams && page > 1) {
-                    // Force primary to fail if we are appending but have no nextParams
-                    throw new Error('No more results from primary');
-                }
+                    // No more results from primary for recommendations
+                } else {
+                    // Use PROXY to avoid CORS issues especially for file:// or varied environments
+                    const response = await fetch(`${PROXY}${encodeURIComponent(url)}`);
+                    if (!response.ok) throw new Error(`Primary API Error: ${response.status}`);
+                    const res = await response.json();
 
-                const response = await fetch(url);
-                if (!response.ok) throw new Error(`Primary API Error: ${response.status}`);
-                const data = await response.json();
+                    let items = [];
+                    let pageInfo = null;
 
-                if (data && (data.items || data.list)) {
-                    const items = data.items || data.list || [];
-                    console.log(`Primary API returned ${items.length} items.`);
-
-                    if (data.page_info && data.page_info.next) {
-                        nextParams = data.page_info.next;
-                    } else {
-                        nextParams = '';
+                    // Handle Vercel API structure
+                    if (res.data && res.data.module_list) {
+                        items = res.data.module_list.flatMap(m => m.items || []);
+                        pageInfo = res.data.page_info;
+                    }
+                    // Handle direct mirror or array response
+                    else {
+                        items = res.items || res.list || (Array.isArray(res) ? res : []);
+                        pageInfo = res.page_info;
                     }
 
                     if (items.length > 0) {
+                        if (pageInfo && pageInfo.next) {
+                            nextParams = pageInfo.next;
+                        } else {
+                            nextParams = '';
+                        }
+
                         const newCount = renderContent(items, append);
 
-                        if (append && newCount === 0) {
-                            // Only duplicates were returned, try secondary API
-                            console.log('Only duplicates from primary, trying secondary...');
-
-                            // If it's a recommendation and it returned duplicates, primary is stuck
-                            if (!keyword) {
-                                // Clear loading state so catch block can proceed
-                                isLoading = false;
-                                throw new Error('Duplicate content from primary');
-                            }
+                        if (append && newCount === 0 && !keyword) {
+                            // Only duplicates were returned
+                            console.log('No new items found after deduplication.');
+                            loadMoreBtn.classList.remove('visible');
                         }
 
                         status.textContent = `Library Ready (${grid.querySelectorAll('.card').length} items)`;
 
-                        // Show load more if we got items, unless we know there's no more
                         if (items.length >= 8 || nextParams) {
                             loadMoreBtn.classList.add('visible');
                             loadMoreBtn.disabled = false;
@@ -358,26 +365,23 @@
                         } else {
                             loadMoreBtn.classList.remove('visible');
                         }
-                        isLoading = false;
-                        return;
+                        success = true;
                     } else if (!append) {
-                        grid.innerHTML = '<div class="loading-spinner">No results found for this search.</div>';
-                    } else {
-                        showToast("No more results available.");
+                        grid.innerHTML = '<div class="loading-spinner">No results found.</div>';
                         loadMoreBtn.classList.remove('visible');
+                        success = true;
                     }
-                    isLoading = false;
-                    return;
                 }
             } catch (e) {
-                console.warn('Primary API failed, trying secondary...', e);
-            } finally {
-                isLoading = false;
+                console.warn('Primary API failed:', e);
             }
 
-            // Secondary API logic (Legacy/Fallback)
-            if (isLoading) return;
-            isLoading = true;
+            if (success) {
+                isLoading = false;
+                return;
+            }
+
+            // Try Secondary API (Encrypted/Official)
             try {
                 let endpoint = `${SECONDARY_API}/h5-api/search/hot-list`;
                 let method = 'POST';
@@ -413,44 +417,39 @@
                 if (data && data.code === 200 && data.data) {
                     const items = data.data.items || data.data.list || [];
                     if (items.length > 0) {
-                        const newCount = renderContent(items, append);
-                        if (append && newCount === 0) {
-                            showToast("No new results available.");
-                            loadMoreBtn.classList.remove('visible');
+                        renderContent(items, append);
+                        status.textContent = `Library Ready (Fallback API)`;
+                        if (items.length >= 10) {
+                            loadMoreBtn.classList.add('visible');
+                            loadMoreBtn.disabled = false;
+                            loadMoreBtn.textContent = 'Load More Results';
                         } else {
-                            status.textContent = `Library Ready (Fallback API)`;
-                            if (items.length >= 10) {
-                                loadMoreBtn.classList.add('visible');
-                                loadMoreBtn.disabled = false;
-                                loadMoreBtn.textContent = 'Load More Results';
-                            } else {
-                                loadMoreBtn.classList.remove('visible');
-                            }
+                            loadMoreBtn.classList.remove('visible');
                         }
-                        isLoading = false;
-                        return;
-                    } else if (!append) {
-                        grid.innerHTML = '<div class="loading-spinner">No results found.</div>';
-                    } else {
-                        showToast("No more results available.");
-                        loadMoreBtn.classList.remove('visible');
+                        success = true;
                     }
-                } else {
-                    throw new Error('Secondary API failed');
                 }
             } catch (e) {
-                console.error('Fallback API failed:', e);
+                console.error('Secondary API failed:', e);
+            }
+
+            if (!success) {
                 if (!append) {
                     status.textContent = 'Offline Discovery Mode';
                     useFallbackData();
-                    loadMoreBtn.classList.remove('visible');
                 } else {
-                    showToast("Server limit reached or offline.");
-                    loadMoreBtn.classList.remove('visible');
+                    showToast("No more results available.");
                 }
-            } finally {
-                isLoading = false;
+                loadMoreBtn.classList.remove('visible');
             }
+
+            // Reset button text just in case it's still "Loading..."
+            if (!loadMoreBtn.classList.contains('visible')) {
+                loadMoreBtn.textContent = 'Load More Results';
+                loadMoreBtn.disabled = false;
+            }
+
+            isLoading = false;
         }
 
         function loadNextPage() {
@@ -497,12 +496,20 @@
                 card.setAttribute('data-id', id);
                 card.innerHTML = `
                     <div class="copied-badge">COPIED</div>
-                    <img src="${poster}" alt="${title}" onerror="this.src='https://static-v1.mydramawave.com/frontend_static/Logo.png'">
+                    <img src="" alt="" class="card-img">
                     <div class="info">
-                        <div class="title">${title}</div>
-                        <div class="id-label">${id}</div>
+                        <div class="title"></div>
+                        <div class="id-label"></div>
                     </div>
                 `;
+
+                const img = card.querySelector('.card-img');
+                img.src = poster;
+                img.alt = title;
+                img.onerror = () => { img.src = 'https://static-v1.mydramawave.com/frontend_static/Logo.png'; };
+
+                card.querySelector('.title').textContent = title;
+                card.querySelector('.id-label').textContent = id;
 
                 card.onclick = () => copyToClipboard(id, card);
                 grid.appendChild(card);
