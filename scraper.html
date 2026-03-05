@@ -103,7 +103,7 @@
             border-color: var(--primary);
             box-shadow: 0 10px 25px rgba(233, 30, 99, 0.4);
         }
-        .card img {
+        .card img, .card .card-img {
             width: 100%;
             aspect-ratio: 2/3;
             object-fit: cover;
@@ -248,15 +248,18 @@
         const urlInput = document.getElementById('url-input');
         const loadMoreBtn = document.getElementById('load-more-btn');
 
-        // Primary API (unencrypted, CORS friendly)
+        // Primary API (High Reliability Vercel Mirror)
+        const VERCEL_API = 'https://tkapiv1.vercel.app';
+        // Secondary API (Direct Mirror)
         const PRIMARY_API = 'https://dramawave.dramabos.my.id';
-        // Secondary API (encrypted, needs proxy)
+        // Tertiary API (Encrypted, needs proxy)
         const SECONDARY_API = 'https://api.mydramawave.com';
         const PROXY = 'https://api.allorigins.win/raw?url=';
         const ENCRYPTION_KEY = '2r36789f45q01ae5';
 
         let copiedIds = JSON.parse(localStorage.getItem('copiedIds') || '[]');
         let currentPage = 1;
+        let nextParams = '';
         let currentKeyword = '';
         let isLoading = false;
 
@@ -297,52 +300,84 @@
                 grid.innerHTML = '<div class="loading-spinner">Syncing Library...</div>';
                 currentPage = 1;
                 currentKeyword = keyword;
+                nextParams = '';
             }
 
             loadMoreBtn.disabled = true;
             loadMoreBtn.textContent = 'Loading...';
             status.textContent = keyword ? `Searching "${keyword}" (Page ${page})...` : `Syncing Library (Page ${page})...`;
 
+            let success = false;
+
+            // Try Primary API (Vercel/Mirror)
             try {
-                // Try Primary API first
-                const url = keyword
+                let url = keyword
                     ? `${PRIMARY_API}/api/search?q=${encodeURIComponent(keyword)}&lang=en&page=${page}`
-                    : `${PRIMARY_API}/api/recommend?lang=en&page=${page}`;
+                    : `${VERCEL_API}/api/home`;
 
-                const response = await fetch(url);
-                if (!response.ok) throw new Error(`Primary API Error: ${response.status}`);
-                const data = await response.json();
+                if (append && nextParams && !keyword) {
+                    url = `${VERCEL_API}/api/home?${nextParams}`;
+                }
 
-                if (data && (data.items || data.list)) {
-                    const items = data.items || data.list || [];
+                if (append && !keyword && !nextParams && page > 1) {
+                    // No more results from primary for recommendations
+                } else {
+                    // Use PROXY to avoid CORS issues especially for file:// or varied environments
+                    const response = await fetch(`${PROXY}${encodeURIComponent(url)}`);
+                    if (!response.ok) throw new Error(`Primary API Error: ${response.status}`);
+                    const res = await response.json();
+
+                    let items = [];
+                    let pageInfo = null;
+
+                    // Handle Vercel API structure
+                    if (res.data && res.data.module_list) {
+                        items = res.data.module_list.flatMap(m => m.items || []);
+                        pageInfo = res.data.page_info;
+                    }
+                    // Handle direct mirror or array response
+                    else {
+                        items = res.items || res.list || (Array.isArray(res) ? res : []);
+                        pageInfo = res.page_info;
+                    }
+
                     if (items.length > 0) {
-                        renderContent(items, append);
+                        if (pageInfo && pageInfo.next) {
+                            nextParams = pageInfo.next;
+                        } else {
+                            nextParams = '';
+                        }
+
+                        const newCount = renderContent(items, append);
+
+                        if (append && newCount === 0 && !keyword) {
+                            // Only duplicates were returned
+                            console.log('No new items found after deduplication.');
+                            loadMoreBtn.classList.remove('visible');
+                        }
+
                         status.textContent = `Library Ready (${grid.querySelectorAll('.card').length} items)`;
 
-                        // Show load more if we got a full-ish page
-                        if (items.length >= 8) {
+                        if (items.length >= 8 || nextParams) {
                             loadMoreBtn.classList.add('visible');
                             loadMoreBtn.disabled = false;
                             loadMoreBtn.textContent = 'Load More Results';
                         } else {
                             loadMoreBtn.classList.remove('visible');
                         }
-                        isLoading = false;
-                        return;
-                    } else if (!append) {
-                        grid.innerHTML = '<div class="loading-spinner">No results found for this search.</div>';
-                    } else {
-                        showToast("No more results available.");
-                        loadMoreBtn.classList.remove('visible');
+                        success = true;
                     }
-                    isLoading = false;
-                    return;
                 }
             } catch (e) {
-                console.warn('Primary API failed, trying secondary...', e);
+                console.warn('Primary API failed:', e);
             }
 
-            // Secondary API logic (Legacy/Fallback)
+            if (success) {
+                isLoading = false;
+                return;
+            }
+
+            // Try Secondary API (Encrypted/Official)
             try {
                 let endpoint = `${SECONDARY_API}/h5-api/search/hot-list`;
                 let method = 'POST';
@@ -387,25 +422,34 @@
                         } else {
                             loadMoreBtn.classList.remove('visible');
                         }
-                    } else if (!append) {
-                        grid.innerHTML = '<div class="loading-spinner">No results found.</div>';
-                    } else {
-                        showToast("No more results available.");
-                        loadMoreBtn.classList.remove('visible');
+                        success = true;
                     }
-                } else {
-                    throw new Error('Secondary API failed');
                 }
             } catch (e) {
-                if (!append) {
-                    status.textContent = 'Offline Discovery Mode';
-                    useFallbackData();
-                    loadMoreBtn.classList.remove('visible');
-                } else {
-                    showToast("Server limit reached or offline.");
-                    loadMoreBtn.classList.remove('visible');
-                }
+                console.error('Secondary API failed:', e);
             }
+
+            if (!success) {
+                if (!append) {
+                    if (keyword) {
+                        grid.innerHTML = `<div class="loading-spinner">No results found for "${keyword}".</div>`;
+                        status.textContent = 'Search Complete';
+                    } else {
+                        status.textContent = 'Offline Discovery Mode';
+                        useFallbackData();
+                    }
+                } else {
+                    showToast("No more results available.");
+                }
+                loadMoreBtn.classList.remove('visible');
+            }
+
+            // Reset button text just in case it's still "Loading..."
+            if (!loadMoreBtn.classList.contains('visible')) {
+                loadMoreBtn.textContent = 'Load More Results';
+                loadMoreBtn.disabled = false;
+            }
+
             isLoading = false;
         }
 
@@ -435,6 +479,7 @@
 
         function renderContent(items, append) {
             if (!append) grid.innerHTML = '';
+            let newItemsCount = 0;
 
             items.forEach(item => {
                 const id = item.playlet_id || item.id || item.series_id || item.key;
@@ -446,21 +491,31 @@
                 // Avoid duplicates in the UI
                 if (append && grid.querySelector(`[data-id="${id}"]`)) return;
 
+                newItemsCount++;
                 const card = document.createElement('div');
                 card.className = `card ${copiedIds.includes(id) ? 'is-copied' : ''}`;
                 card.setAttribute('data-id', id);
                 card.innerHTML = `
                     <div class="copied-badge">COPIED</div>
-                    <img src="${poster}" alt="${title}" onerror="this.src='https://static-v1.mydramawave.com/frontend_static/Logo.png'">
+                    <img src="" alt="" class="card-img">
                     <div class="info">
-                        <div class="title">${title}</div>
-                        <div class="id-label">${id}</div>
+                        <div class="title"></div>
+                        <div class="id-label"></div>
                     </div>
                 `;
+
+                const img = card.querySelector('.card-img');
+                img.src = poster;
+                img.alt = title;
+                img.onerror = () => { img.src = 'https://static-v1.mydramawave.com/frontend_static/Logo.png'; };
+
+                card.querySelector('.title').textContent = title;
+                card.querySelector('.id-label').textContent = id;
 
                 card.onclick = () => copyToClipboard(id, card);
                 grid.appendChild(card);
             });
+            return newItemsCount;
         }
 
         function clearHistory() {
