@@ -54,7 +54,18 @@ class Router {
 
     public function handleRequest() {
         $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-        $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
+        $uri = $_SERVER['REQUEST_URI'] ?? '/';
+
+        // Remove subdirectory if present
+        $scriptName = dirname($_SERVER['SCRIPT_NAME']);
+        if ($scriptName !== '/' && strpos($uri, $scriptName) === 0) {
+            $uri = substr($uri, strlen($scriptName));
+        }
+
+        // Remove index.php from path
+        $uri = str_replace('/index.php', '', $uri);
+
+        $path = parse_url($uri, PHP_URL_PATH) ?: '/';
 
         foreach ($this->routes as $route) {
             if ($route['method'] === $method && $route['path'] === $path) {
