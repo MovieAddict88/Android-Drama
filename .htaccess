@@ -1,0 +1,7 @@
+RewriteEngine On
+RewriteBase /
+
+# Handle InfinityFree specifics: ensure index.php is used as the router
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php [L,QSA]
