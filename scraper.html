@@ -257,6 +257,7 @@
 
         let copiedIds = JSON.parse(localStorage.getItem('copiedIds') || '[]');
         let currentPage = 1;
+        let nextParams = '';
         let currentKeyword = '';
         let isLoading = false;
 
@@ -297,6 +298,7 @@
                 grid.innerHTML = '<div class="loading-spinner">Syncing Library...</div>';
                 currentPage = 1;
                 currentKeyword = keyword;
+                nextParams = '';
             }
 
             loadMoreBtn.disabled = true;
@@ -304,10 +306,18 @@
             status.textContent = keyword ? `Searching "${keyword}" (Page ${page})...` : `Syncing Library (Page ${page})...`;
 
             try {
-                // Try Primary API first
-                const url = keyword
+                let url = keyword
                     ? `${PRIMARY_API}/api/search?q=${encodeURIComponent(keyword)}&lang=en&page=${page}`
                     : `${PRIMARY_API}/api/recommend?lang=en&page=${page}`;
+
+                if (append && nextParams && !keyword) {
+                    url = `${PRIMARY_API}/api/recommend?lang=en&${nextParams}`;
+                }
+
+                if (append && !keyword && !nextParams && page > 1) {
+                    // Force primary to fail if we are appending but have no nextParams
+                    throw new Error('No more results from primary');
+                }
 
                 const response = await fetch(url);
                 if (!response.ok) throw new Error(`Primary API Error: ${response.status}`);
@@ -315,12 +325,33 @@
 
                 if (data && (data.items || data.list)) {
                     const items = data.items || data.list || [];
+                    console.log(`Primary API returned ${items.length} items.`);
+
+                    if (data.page_info && data.page_info.next) {
+                        nextParams = data.page_info.next;
+                    } else {
+                        nextParams = '';
+                    }
+
                     if (items.length > 0) {
-                        renderContent(items, append);
+                        const newCount = renderContent(items, append);
+
+                        if (append && newCount === 0) {
+                            // Only duplicates were returned, try secondary API
+                            console.log('Only duplicates from primary, trying secondary...');
+
+                            // If it's a recommendation and it returned duplicates, primary is stuck
+                            if (!keyword) {
+                                // Clear loading state so catch block can proceed
+                                isLoading = false;
+                                throw new Error('Duplicate content from primary');
+                            }
+                        }
+
                         status.textContent = `Library Ready (${grid.querySelectorAll('.card').length} items)`;
 
-                        // Show load more if we got a full-ish page
-                        if (items.length >= 8) {
+                        // Show load more if we got items, unless we know there's no more
+                        if (items.length >= 8 || nextParams) {
                             loadMoreBtn.classList.add('visible');
                             loadMoreBtn.disabled = false;
                             loadMoreBtn.textContent = 'Load More Results';
@@ -340,9 +371,13 @@
                 }
             } catch (e) {
                 console.warn('Primary API failed, trying secondary...', e);
+            } finally {
+                isLoading = false;
             }
 
             // Secondary API logic (Legacy/Fallback)
+            if (isLoading) return;
+            isLoading = true;
             try {
                 let endpoint = `${SECONDARY_API}/h5-api/search/hot-list`;
                 let method = 'POST';
@@ -378,15 +413,22 @@
                 if (data && data.code === 200 && data.data) {
                     const items = data.data.items || data.data.list || [];
                     if (items.length > 0) {
-                        renderContent(items, append);
-                        status.textContent = `Library Ready (Fallback API)`;
-                        if (items.length >= 10) {
-                            loadMoreBtn.classList.add('visible');
-                            loadMoreBtn.disabled = false;
-                            loadMoreBtn.textContent = 'Load More Results';
-                        } else {
+                        const newCount = renderContent(items, append);
+                        if (append && newCount === 0) {
+                            showToast("No new results available.");
                             loadMoreBtn.classList.remove('visible');
+                        } else {
+                            status.textContent = `Library Ready (Fallback API)`;
+                            if (items.length >= 10) {
+                                loadMoreBtn.classList.add('visible');
+                                loadMoreBtn.disabled = false;
+                                loadMoreBtn.textContent = 'Load More Results';
+                            } else {
+                                loadMoreBtn.classList.remove('visible');
+                            }
                         }
+                        isLoading = false;
+                        return;
                     } else if (!append) {
                         grid.innerHTML = '<div class="loading-spinner">No results found.</div>';
                     } else {
@@ -397,6 +439,7 @@
                     throw new Error('Secondary API failed');
                 }
             } catch (e) {
+                console.error('Fallback API failed:', e);
                 if (!append) {
                     status.textContent = 'Offline Discovery Mode';
                     useFallbackData();
@@ -405,8 +448,9 @@
                     showToast("Server limit reached or offline.");
                     loadMoreBtn.classList.remove('visible');
                 }
+            } finally {
+                isLoading = false;
             }
-            isLoading = false;
         }
 
         function loadNextPage() {
@@ -435,6 +479,7 @@
 
         function renderContent(items, append) {
             if (!append) grid.innerHTML = '';
+            let newItemsCount = 0;
 
             items.forEach(item => {
                 const id = item.playlet_id || item.id || item.series_id || item.key;
@@ -446,6 +491,7 @@
                 // Avoid duplicates in the UI
                 if (append && grid.querySelector(`[data-id="${id}"]`)) return;
 
+                newItemsCount++;
                 const card = document.createElement('div');
                 card.className = `card ${copiedIds.includes(id) ? 'is-copied' : ''}`;
                 card.setAttribute('data-id', id);
@@ -461,6 +507,7 @@
                 card.onclick = () => copyToClipboard(id, card);
                 grid.appendChild(card);
             });
+            return newItemsCount;
         }
 
         function clearHistory() {
