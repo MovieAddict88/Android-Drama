@@ -4,15 +4,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MyDramaWave ID Scraper</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
+        :root {
+            --primary: #e91e63;
+            --bg: #0f0f0f;
+            --card-bg: #1a1a1a;
+            --text: #ffffff;
+            --text-dim: #aaa;
+            --success: #4caf50;
+        }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #0f0f0f;
-            color: #ffffff;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
             margin: 0;
             padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
         header {
+            width: 100%;
+            max-width: 900px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -20,89 +34,140 @@
             border-bottom: 1px solid #333;
             margin-bottom: 20px;
         }
-        h1 { margin: 0; font-size: 24px; color: #e91e63; }
-        #status { font-size: 14px; color: #aaa; }
-        .grid {
+        h1 { margin: 0; font-size: 28px; color: var(--primary); font-weight: 800; letter-spacing: -1px; }
+        #status { font-size: 14px; color: var(--text-dim); background: #222; padding: 4px 12px; border-radius: 20px; }
+        .controls {
+            width: 100%;
+            max-width: 900px;
+            margin-bottom: 30px;
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        @media (max-width: 600px) {
+            .controls { grid-template-columns: 1fr; }
+        }
+        .input-group {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        label { font-size: 12px; font-weight: bold; color: var(--primary); text-transform: uppercase; margin-left: 5px; }
+        input {
+            padding: 14px 16px;
+            border-radius: 10px;
+            border: 1px solid #333;
+            background: var(--card-bg);
+            color: white;
+            outline: none;
+            font-size: 15px;
+            transition: all 0.3s;
+        }
+        input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(233, 30, 99, 0.2); }
+        .grid {
+            width: 100%;
+            max-width: 900px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
             gap: 20px;
         }
         .card {
-            background: #1a1a1a;
-            border-radius: 12px;
+            background: var(--card-bg);
+            border-radius: 14px;
             overflow: hidden;
             cursor: pointer;
             position: relative;
-            transition: all 0.3s ease;
-            border: 1px solid #222;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 2px solid #222;
+            display: flex;
+            flex-direction: column;
         }
         .card:hover {
-            transform: translateY(-5px);
-            border-color: #e91e63;
-            box-shadow: 0 5px 15px rgba(233, 30, 99, 0.3);
+            transform: translateY(-8px);
+            border-color: var(--primary);
+            box-shadow: 0 10px 25px rgba(233, 30, 99, 0.4);
         }
         .card img {
             width: 100%;
             aspect-ratio: 2/3;
             object-fit: cover;
             background-color: #2a2a2a;
+            border-bottom: 1px solid #222;
         }
         .card .info {
-            padding: 12px;
+            padding: 14px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
         }
         .card .title {
-            font-size: 14px;
-            font-weight: 500;
-            margin-bottom: 4px;
-            white-space: nowrap;
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
             overflow: hidden;
-            text-overflow: ellipsis;
+            line-height: 1.3;
         }
         .card .id-label {
-            font-size: 12px;
+            font-size: 11px;
             color: #888;
-            font-family: monospace;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+            background: #111;
+            padding: 4px 8px;
+            border-radius: 6px;
+            width: fit-content;
         }
         .copied-badge {
             position: absolute;
-            top: 10px;
-            right: 10px;
-            background: #4caf50;
+            top: 12px;
+            right: 12px;
+            background: var(--success);
             color: white;
-            padding: 4px 8px;
-            border-radius: 20px;
-            font-size: 10px;
-            font-weight: bold;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 900;
             display: none;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            z-index: 10;
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
-        .card.is-copied .copied-badge {
-            display: block;
+        @keyframes popIn {
+            from { transform: scale(0.5); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
         }
-        .card.is-copied {
-            border-color: #4caf50;
-        }
+        .card.is-copied .copied-badge { display: block; }
+        .card.is-copied { border-color: var(--success); }
         .loading-spinner {
             grid-column: 1 / -1;
             text-align: center;
-            padding: 50px;
-            color: #aaa;
+            padding: 80px 20px;
+            color: var(--text-dim);
+            font-style: italic;
         }
         #toast {
             position: fixed;
-            bottom: 20px;
+            bottom: -50px;
             left: 50%;
             transform: translateX(-50%);
-            background: #323232;
+            background: #222;
             color: white;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-size: 14px;
+            padding: 14px 28px;
+            border-radius: 50px;
+            font-size: 15px;
+            font-weight: 600;
             opacity: 0;
-            transition: opacity 0.3s;
+            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
             z-index: 1000;
             pointer-events: none;
+            border: 1px solid var(--primary);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
+        #toast.show { opacity: 1; bottom: 40px; }
     </style>
 </head>
 <body>
@@ -111,24 +176,30 @@
         <div id="status">Initializing...</div>
     </header>
 
-    <div style="margin-bottom: 20px; display: flex; gap: 10px;">
-        <input type="text" id="search-input" placeholder="Search for a drama..." style="flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #1a1a1a; color: white; outline: none;">
-        <input type="text" id="url-input" placeholder="Paste link to extract ID..." style="flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #1a1a1a; color: white; outline: none;">
+    <div class="controls">
+        <div class="input-group">
+            <label>Search Library</label>
+            <input type="text" id="search-input" placeholder="Enter drama title...">
+        </div>
+        <div class="input-group">
+            <label>Extract from Link</label>
+            <input type="text" id="url-input" placeholder="Paste MyDramaWave URL here...">
+        </div>
     </div>
 
     <div class="grid" id="drama-grid">
-        <div class="loading-spinner">Fetching dramas from MyDramaWave...</div>
+        <div class="loading-spinner">Waking up the scraper...</div>
     </div>
 
-    <div id="toast">ID Copied to clipboard!</div>
+    <div id="toast">ID Copied Successfully!</div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <script>
         const grid = document.getElementById('drama-grid');
         const status = document.getElementById('status');
         const toast = document.getElementById('toast');
         const searchInput = document.getElementById('search-input');
         const urlInput = document.getElementById('url-input');
+
         const API_BASE = 'https://api.mydramawave.com';
         const PROXY = 'https://api.allorigins.win/raw?url=';
         const ENCRYPTION_KEY = '2r36789f45q01ae5';
@@ -137,23 +208,27 @@
 
         function showToast(message) {
             toast.textContent = message;
-            toast.style.opacity = '1';
+            toast.classList.add('show');
             setTimeout(() => {
-                toast.style.opacity = '0';
-            }, 2000);
+                toast.classList.remove('show');
+            }, 3000);
         }
 
-        function decrypt(data) {
+        function decrypt(base64Data) {
             try {
                 const key = CryptoJS.enc.Utf8.parse(ENCRYPTION_KEY);
-                const iv = key;
-                const decrypted = CryptoJS.AES.decrypt(data, key, {
-                    iv: iv,
-                    mode: CryptoJS.mode.CBC,
-                    padding: CryptoJS.pad.Pkcs7
-                });
-                const decryptedStr = decrypted.toString(CryptoJS.enc.Utf8);
-                return JSON.parse(decryptedStr);
+                const rawData = CryptoJS.enc.Base64.parse(base64Data);
+
+                const iv = CryptoJS.lib.WordArray.create(rawData.words.slice(0, 4));
+                const ciphertext = CryptoJS.lib.WordArray.create(rawData.words.slice(4));
+
+                const decrypted = CryptoJS.AES.decrypt(
+                    { ciphertext: ciphertext },
+                    key,
+                    { iv: iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 }
+                );
+
+                return JSON.parse(decrypted.toString(CryptoJS.enc.Utf8));
             } catch (e) {
                 console.error('Decryption failed:', e);
                 return null;
@@ -161,113 +236,108 @@
         }
 
         async function fetchWithAuth(url, options = {}) {
-            const defaultHeaders = {
+            const headers = {
                 'Platform': 'h5',
                 'Version': '1.0.0',
+                'App-Name': 'com.dramawave.h5',
                 'Accept': 'application/json',
-                'Skip-Encrypt': '1',
-                'App-Name': 'com.dramawave.h5'
+                'Content-Type': 'application/json',
+                'Skip-Encrypt': '1'
             };
 
-            // Note: Many proxies don't forward all headers. allorigins.win forwards some but not all.
-            // MyDramaWave API might be rejecting due to missing headers or proxy detection.
-            const response = await fetch(`${PROXY}${encodeURIComponent(url)}`, {
-                ...options,
-                headers: {
-                    ...defaultHeaders,
-                    ...options.headers
-                }
-            });
-
-            const text = await response.text();
             try {
-                // Remove allorigins wrapper if it exists (though raw proxy shouldn't have it)
-                const data = JSON.parse(text);
-                if (data.contents) return JSON.parse(data.contents);
-                return data;
-            } catch {
-                return decrypt(text);
-            }
-        }
-
-        async function searchDramas(keyword = '') {
-            try {
-                status.textContent = keyword ? `Searching for "${keyword}"...` : 'Fetching popular dramas...';
-
-                let endpoint = API_BASE + '/h5-api/search/hot-list';
-                let body = {};
-
-                if (keyword) {
-                    endpoint = API_BASE + '/h5-api/search/drama';
-                    body = { keyword, page: 1, page_size: 20 };
-                }
-
-                const response = await fetchWithAuth(endpoint, {
-                    method: 'POST',
-                    body: JSON.stringify(body)
+                const response = await fetch(`${PROXY}${encodeURIComponent(url)}`, {
+                    ...options,
+                    headers: { ...headers, ...options.headers }
                 });
 
-                if (response && response.code === 200 && response.data && response.data.items) {
-                    renderContent(response.data.items);
-                    status.textContent = keyword ? `Found ${response.data.items.length} results` : 'Ready';
-                } else {
-                    if (!keyword) {
-                        status.textContent = 'Discovery fallback mode';
-                        useFallbackData();
-                    } else {
-                        status.textContent = 'No results found';
-                        grid.innerHTML = '<div class="loading-spinner">No results found for your search.</div>';
-                    }
+                const text = await response.text();
+                try {
+                    return JSON.parse(text);
+                } catch {
+                    return decrypt(text);
                 }
             } catch (error) {
-                console.error('Search error:', error);
-                if (!keyword) useFallbackData();
+                console.error('Fetch error:', error);
+                return null;
             }
         }
 
-        let searchTimeout;
-        searchInput.oninput = (e) => {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                searchDramas(e.target.value.trim());
-            }, 500);
-        };
+        async function loadDramas(keyword = '') {
+            status.textContent = keyword ? `Searching...` : 'Syncing Library...';
 
-        urlInput.oninput = (e) => {
-            const url = e.target.value.trim();
-            if (!url) return;
+            // Set a timeout to trigger fallback if API is slow
+            const fallbackTimeout = setTimeout(() => {
+                if (!keyword && grid.innerHTML.includes('Waking up')) {
+                    status.textContent = 'Offline Discovery Mode (Timeout)';
+                    useFallbackData();
+                }
+            }, 5000);
 
-            // Extract ID from URL: https://m.mydramawave.com/series/MZS0CyDOtb/2Uaq4xlsza?
-            const match = url.match(/\/series\/([^\/]+)/);
-            if (match && match[1]) {
-                const id = match[1];
-                copyToClipboard(id);
-                urlInput.value = '';
-                showToast(`Extracted ID: ${id}`);
+            let endpoint = `${API_BASE}/h5-api/search/hot-list`;
+            let method = 'POST';
+            let body = '{}';
+
+            if (keyword) {
+                endpoint = `${API_BASE}/h5-api/search/drama`;
+                body = JSON.stringify({ keyword, page: 1, page_size: 20 });
             }
-        };
+
+            try {
+                const response = await fetchWithAuth(endpoint, { method, body });
+                clearTimeout(fallbackTimeout);
+
+                if (response && response.code === 200 && response.data) {
+                    const items = response.data.items || response.data.list || [];
+                    renderContent(items);
+                    status.textContent = `Library Ready (${items.length} items)`;
+                } else {
+                    if (!keyword) {
+                        status.textContent = 'Offline Discovery Mode';
+                        useFallbackData();
+                    } else {
+                        grid.innerHTML = '<div class="loading-spinner">No dramas found in the records.</div>';
+                        status.textContent = 'Search empty';
+                    }
+                }
+            } catch (e) {
+                clearTimeout(fallbackTimeout);
+                if (!keyword) {
+                    status.textContent = 'Offline Discovery Mode (Error)';
+                    useFallbackData();
+                }
+            }
+        }
 
         function useFallbackData() {
-            const fallbackItems = [
-                { series_id: 'MZS0CyDOtb', title: 'The CEO Secret Love', poster: 'https://static-v1.mydramawave.com/frontend_static/Logo.png' },
-                { series_id: '2Uaq4xlsza', title: 'My Husband is a Hero', poster: 'https://static-v1.mydramawave.com/frontend_static/Logo.png' },
-                { series_id: 'N8kX2P9q1Z', title: 'Forbidden Romance', poster: 'https://static-v1.mydramawave.com/frontend_static/Logo.png' },
-                { series_id: 'J5mR7vW4kL', title: 'The Lost Heir', poster: 'https://static-v1.mydramawave.com/frontend_static/Logo.png' }
+            // Extended fallback list of popular series
+            const fallback = [
+                { id: 'MZS0CyDOtb', title: "The CEO's Secret Love", poster: 'https://static-v1.mydramawave.com/frontend_static/Logo.png' },
+                { id: '2Uaq4xlsza', title: 'My Husband is a Hero', poster: 'https://static-v1.mydramawave.com/frontend_static/Logo.png' },
+                { id: 'N8kX2P9q1Z', title: 'Forbidden Romance', poster: 'https://static-v1.mydramawave.com/frontend_static/Logo.png' },
+                { id: 'J5mR7vW4kL', title: 'The Lost Heir', poster: 'https://static-v1.mydramawave.com/frontend_static/Logo.png' },
+                { id: 'B1v8kM2q5X', title: 'Revenge of the Discarded Bride', poster: 'https://static-v1.mydramawave.com/frontend_static/Logo.png' },
+                { id: 'K9pR3T1v7M', title: 'My Billionaire Stepbrother', poster: 'https://static-v1.mydramawave.com/frontend_static/Logo.png' },
+                { id: 'L2mQ5n9P0Z', title: 'The Hidden Billionaire Daughter', poster: 'https://static-v1.mydramawave.com/frontend_static/Logo.png' },
+                { id: 'A4sD6fG8hK', title: 'Unveiling the Hidden CEO', poster: 'https://static-v1.mydramawave.com/frontend_static/Logo.png' },
+                { id: 'C7kL3p9R5S', title: 'Contract with the Enemy', poster: 'https://static-v1.mydramawave.com/frontend_static/Logo.png' },
+                { id: 'D1sF5g9H2L', title: 'President\'s Dangerous Love', poster: 'https://static-v1.mydramawave.com/frontend_static/Logo.png' },
+                { id: 'E3rT6y8U1I', title: 'The Abandoned Heiress Returns', poster: 'https://static-v1.mydramawave.com/frontend_static/Logo.png' },
+                { id: 'X0vB2nM9q7', title: 'Love Against All Odds', poster: 'https://static-v1.mydramawave.com/frontend_static/Logo.png' }
             ];
-            renderContent(fallbackItems);
+            renderContent(fallback);
         }
 
         function renderContent(items) {
             grid.innerHTML = '';
             if (items.length === 0) {
-                grid.innerHTML = '<div class="loading-spinner">No dramas found.</div>';
+                grid.innerHTML = '<div class="loading-spinner">No items found.</div>';
                 return;
             }
-
             items.forEach(item => {
-                const id = item.series_id || item.id;
-                const title = item.title || item.name || 'Untitled';
-                const poster = item.poster || item.cover_url || 'https://static-v1.mydramawave.com/frontend_static/Logo.png';
+                const id = item.series_id || item.id || item.key;
+                const title = item.title || item.name || 'Drama Series';
+                const poster = item.poster || item.cover || item.cover_url || 'https://static-v1.mydramawave.com/frontend_static/Logo.png';
 
                 const card = document.createElement('div');
                 card.className = `card ${copiedIds.includes(id) ? 'is-copied' : ''}`;
@@ -280,43 +350,60 @@
                     </div>
                 `;
 
-                card.onclick = () => {
-                    copyToClipboard(id, card);
-                };
-
+                card.onclick = () => copyToClipboard(id, card);
                 grid.appendChild(card);
             });
         }
 
         function copyToClipboard(id, element) {
-            const tempInput = document.createElement('input');
-            tempInput.value = id;
-            document.body.appendChild(tempInput);
-            tempInput.select();
-            document.execCommand('copy');
-            document.body.removeChild(tempInput);
+            navigator.clipboard.writeText(id).then(() => {
+                showToast(`ID Copied: ${id}`);
 
-            showToast(`Copied ID: ${id}`);
+                if (!copiedIds.includes(id)) {
+                    copiedIds.push(id);
+                    localStorage.setItem('copiedIds', JSON.stringify(copiedIds));
+                }
 
-            if (!copiedIds.includes(id)) {
-                copiedIds.push(id);
-                localStorage.setItem('copiedIds', JSON.stringify(copiedIds));
-            }
-
-            if (element) {
-                element.classList.add('is-copied');
-            } else {
-                // If copied via URL input, try to find the card in the grid and mark it
-                const cards = document.querySelectorAll('.card');
-                cards.forEach(card => {
-                    if (card.querySelector('.id-label').textContent === id) {
-                        card.classList.add('is-copied');
-                    }
-                });
-            }
+                if (element) {
+                    element.classList.add('is-copied');
+                } else {
+                    document.querySelectorAll('.card').forEach(c => {
+                        if (c.querySelector('.id-label').textContent === id) {
+                            c.classList.add('is-copied');
+                        }
+                    });
+                }
+            }).catch(err => {
+                const input = document.createElement('input');
+                input.value = id;
+                document.body.appendChild(input);
+                input.select();
+                document.execCommand('copy');
+                document.body.removeChild(input);
+                showToast(`ID Copied: ${id}`);
+            });
         }
 
-        searchDramas();
+        let searchDebounce;
+        searchInput.oninput = (e) => {
+            clearTimeout(searchDebounce);
+            searchDebounce = setTimeout(() => {
+                loadDramas(e.target.value.trim());
+            }, 600);
+        };
+
+        urlInput.oninput = (e) => {
+            const url = e.target.value.trim();
+            const match = url.match(/\/series\/([^\/?#]+)/);
+            if (match && match[1]) {
+                const id = match[1];
+                copyToClipboard(id);
+                urlInput.value = '';
+                showToast(`Extracted ID: ${id}`);
+            }
+        };
+
+        loadDramas();
     </script>
 </body>
 </html>
