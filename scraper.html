@@ -185,7 +185,7 @@
         .btn-load-more:hover { transform: scale(1.05); background: #c2185b; }
         .btn-load-more:active { transform: scale(0.95); }
         .btn-load-more.visible { display: block; }
-        .btn-load-more:disabled { background: #555; cursor: not-allowed; transform: none; }
+        .btn-load-more:disabled { background: #444; color: #888; cursor: not-allowed; transform: none; }
 
         #toast {
             position: fixed;
@@ -299,17 +299,18 @@
                 currentKeyword = keyword;
             }
 
-            loadMoreBtn.classList.remove('visible');
+            loadMoreBtn.disabled = true;
+            loadMoreBtn.textContent = 'Loading...';
             status.textContent = keyword ? `Searching "${keyword}" (Page ${page})...` : `Syncing Library (Page ${page})...`;
 
             try {
                 // Try Primary API first
-                // Note: Research suggests pagination might be limited or unsupported on mirror
                 const url = keyword
                     ? `${PRIMARY_API}/api/search?q=${encodeURIComponent(keyword)}&lang=en&page=${page}`
                     : `${PRIMARY_API}/api/recommend?lang=en&page=${page}`;
 
                 const response = await fetch(url);
+                if (!response.ok) throw new Error(`Primary API Error: ${response.status}`);
                 const data = await response.json();
 
                 if (data && (data.items || data.list)) {
@@ -318,13 +319,21 @@
                         renderContent(items, append);
                         status.textContent = `Library Ready (${grid.querySelectorAll('.card').length} items)`;
 
-                        // Show load more if we got a full-ish page (usually 20 for search, 10 for recommend)
-                        if (items.length >= 10) {
+                        // Show load more if we got a full-ish page
+                        if (items.length >= 8) {
                             loadMoreBtn.classList.add('visible');
                             loadMoreBtn.disabled = false;
+                            loadMoreBtn.textContent = 'Load More Results';
+                        } else {
+                            loadMoreBtn.classList.remove('visible');
                         }
+                        isLoading = false;
+                        return;
                     } else if (!append) {
                         grid.innerHTML = '<div class="loading-spinner">No results found for this search.</div>';
+                    } else {
+                        showToast("No more results available.");
+                        loadMoreBtn.classList.remove('visible');
                     }
                     isLoading = false;
                     return;
@@ -371,12 +380,18 @@
                     if (items.length > 0) {
                         renderContent(items, append);
                         status.textContent = `Library Ready (Fallback API)`;
-                        if (items.length >= 15) {
+                        if (items.length >= 10) {
                             loadMoreBtn.classList.add('visible');
                             loadMoreBtn.disabled = false;
+                            loadMoreBtn.textContent = 'Load More Results';
+                        } else {
+                            loadMoreBtn.classList.remove('visible');
                         }
                     } else if (!append) {
                         grid.innerHTML = '<div class="loading-spinner">No results found.</div>';
+                    } else {
+                        showToast("No more results available.");
+                        loadMoreBtn.classList.remove('visible');
                     }
                 } else {
                     throw new Error('Secondary API failed');
@@ -385,8 +400,9 @@
                 if (!append) {
                     status.textContent = 'Offline Discovery Mode';
                     useFallbackData();
+                    loadMoreBtn.classList.remove('visible');
                 } else {
-                    showToast("No more results available from the server.");
+                    showToast("Server limit reached or offline.");
                     loadMoreBtn.classList.remove('visible');
                 }
             }
@@ -394,6 +410,7 @@
         }
 
         function loadNextPage() {
+            if (isLoading) return;
             currentPage++;
             loadDramas(currentKeyword, currentPage, true);
         }
