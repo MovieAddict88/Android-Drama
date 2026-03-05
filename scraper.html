@@ -312,7 +312,7 @@
             // Try Primary API (Vercel/Mirror)
             try {
                 let url = keyword
-                    ? `${PRIMARY_API}/api/search?q=${encodeURIComponent(keyword)}&lang=en&page=${page}`
+                    ? `${PRIMARY_API}/api/search?q=${encodeURIComponent(keyword)}&lang=en&page=${page}&page_size=20`
                     : `${VERCEL_API}/api/home`;
 
                 if (append && nextParams && !keyword) {
@@ -322,7 +322,7 @@
                 if (append && !keyword && !nextParams && page > 1) {
                     // No more results from primary for recommendations
                 } else {
-                    // Use PROXY to avoid CORS issues especially for file:// or varied environments
+                    // Use PROXY to avoid CORS issues
                     const response = await fetch(`${PROXY}${encodeURIComponent(url)}`);
                     if (!response.ok) throw new Error(`Primary API Error: ${response.status}`);
                     const res = await response.json();
@@ -330,9 +330,15 @@
                     let items = [];
                     let pageInfo = null;
 
-                    // Handle Vercel API structure
-                    if (res.data && res.data.module_list) {
-                        items = res.data.module_list.flatMap(m => m.items || []);
+                    // Handle Vercel/Mirror API structure
+                    if (res.data) {
+                        const dataItems = res.data.items || res.data.module_list || [];
+                        // Check if it's a list of modules (each module has an 'items' array)
+                        if (Array.isArray(dataItems) && dataItems.length > 0 && dataItems.some(m => Array.isArray(m.items))) {
+                            items = dataItems.flatMap(m => m.items || []);
+                        } else {
+                            items = Array.isArray(dataItems) ? dataItems : [];
+                        }
                         pageInfo = res.data.page_info;
                     }
                     // Handle direct mirror or array response
@@ -349,20 +355,30 @@
                         }
 
                         const newCount = renderContent(items, append);
-
-                        if (append && newCount === 0 && !keyword) {
-                            // Only duplicates were returned
-                            console.log('No new items found after deduplication.');
-                            loadMoreBtn.classList.remove('visible');
-                        }
-
                         status.textContent = `Library Ready (${grid.querySelectorAll('.card').length} items)`;
 
-                        if (items.length >= 8 || nextParams) {
-                            loadMoreBtn.classList.add('visible');
-                            loadMoreBtn.disabled = false;
-                            loadMoreBtn.textContent = 'Load More Results';
+                        // Visibility of Load More button
+                        if (keyword) {
+                            // For search, we check if we got enough items to suggest there might be more
+                            if (items.length >= 10) {
+                                loadMoreBtn.classList.add('visible');
+                                loadMoreBtn.disabled = false;
+                                loadMoreBtn.textContent = 'Load More Results';
+                            } else {
+                                loadMoreBtn.classList.remove('visible');
+                            }
                         } else {
+                            // For home, we use nextParams or check if new items were added
+                            if (nextParams || (newCount > 0 && items.length >= 8)) {
+                                loadMoreBtn.classList.add('visible');
+                                loadMoreBtn.disabled = false;
+                                loadMoreBtn.textContent = 'Load More Results';
+                            } else {
+                                loadMoreBtn.classList.remove('visible');
+                            }
+                        }
+
+                        if (append && newCount === 0) {
                             loadMoreBtn.classList.remove('visible');
                         }
                         success = true;
@@ -413,13 +429,19 @@
                 if (data && data.code === 200 && data.data) {
                     const items = data.data.items || data.data.list || [];
                     if (items.length > 0) {
-                        renderContent(items, append);
+                        const newCount = renderContent(items, append);
                         status.textContent = `Library Ready (Fallback API)`;
-                        if (items.length >= 10) {
+
+                        // Handle pagination for fallback
+                        if (items.length >= 10 && (newCount > 0 || !append)) {
                             loadMoreBtn.classList.add('visible');
                             loadMoreBtn.disabled = false;
                             loadMoreBtn.textContent = 'Load More Results';
                         } else {
+                            loadMoreBtn.classList.remove('visible');
+                        }
+
+                        if (append && newCount === 0) {
                             loadMoreBtn.classList.remove('visible');
                         }
                         success = true;
@@ -482,9 +504,12 @@
             let newItemsCount = 0;
 
             items.forEach(item => {
-                const id = item.playlet_id || item.id || item.series_id || item.key;
-                const title = item.title || item.name || 'Drama Series';
-                const poster = item.cover || item.poster || item.cover_url || 'https://static-v1.mydramawave.com/frontend_static/Logo.png';
+                // Robust ID extraction
+                const id = item.playlet_id || item.id || item.series_id || item.key || item.book_id;
+                // Robust title extraction
+                const title = item.title || item.name || item.playlet_name || item.series_name || 'Drama Series';
+                // Robust poster extraction
+                const poster = item.cover || item.poster || item.cover_url || item.horizontal_cover || 'https://static-v1.mydramawave.com/frontend_static/Logo.png';
 
                 if (!id) return;
 
