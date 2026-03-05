@@ -32,7 +32,7 @@ class ShortMaxScraper {
         $html = $this->fetch($url);
         if (!$html) return null;
 
-        if (preg_match('/<script id="__NEXT_DATA__" type="application\/json">(.*?)<\/script>/', $html, $matches)) {
+        if (preg_match('/<script id="__NEXT_DATA__" type="application\/json"[^>]*>(.*?)<\/script>/s', $html, $matches)) {
             return json_decode($matches[1], true);
         }
 

@@ -32,7 +32,7 @@ class ReelShortScraper {
         $html = $this->fetch($url);
         if (!$html) return null;
 
-        if (preg_match('/<script id="__NEXT_DATA__" type="application\/json">(.*?)<\/script>/', $html, $matches)) {
+        if (preg_match('/<script id="__NEXT_DATA__" type="application\/json"[^>]*>(.*?)<\/script>/s', $html, $matches)) {
             return json_decode($matches[1], true);
         }
 
@@ -44,8 +44,10 @@ class ReelShortScraper {
         if (!$data) return ["s" => 1, "m" => "Data not found", "data" => []];
 
         try {
-            // ReelShort usually stores data in fallback or pageProps
-            $sections = $data['props']['pageProps']['fallback']['/api/video/hall/info']['list'] ?? [];
+            $sections = $data['props']['pageProps']['initialState']['home']['sections'] ?? [];
+            if (empty($sections)) {
+                $sections = $data['props']['pageProps']['fallback']['/api/video/hall/info']['list'] ?? [];
+            }
             return ["s" => 0, "m" => "Success", "data" => $sections];
         } catch (Exception $e) {
             return ["s" => 1, "m" => $e->getMessage(), "data" => []];
@@ -83,12 +85,16 @@ class ReelShortScraper {
     }
 
     public function getEpisodes($bookId) {
+        // ReelShort episodes might be at /book/id or /play/id
         $url = $this->baseUrl . "/book/" . $bookId;
         $data = $this->getNextData($url);
         if (!$data) return ["s" => 1, "m" => "Episodes not found", "data" => []];
 
         try {
-            $episodes = $data['props']['pageProps']['fallback']["/api/video/book/chapters?book_id=$bookId"] ?? [];
+            $episodes = $data['props']['pageProps']['initialState']['book']['chapterList'] ?? [];
+            if (empty($episodes)) {
+                $episodes = $data['props']['pageProps']['fallback']["/api/video/book/chapters?book_id=$bookId"] ?? [];
+            }
             return ["s" => 0, "m" => "Success", "data" => $episodes];
         } catch (Exception $e) {
             return ["s" => 1, "m" => $e->getMessage(), "data" => []];

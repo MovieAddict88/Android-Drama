@@ -13,11 +13,67 @@
         "responses": { "200": { "description": "Success" } }
       }
     },
+    "/shortmax/detail": {
+      "get": {
+        "tags": ["ShortMax"],
+        "summary": "Drama Details",
+        "parameters": [{ "name": "shortPlayId", "in": "query", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Success" } }
+      }
+    },
+    "/shortmax/allepisode": {
+      "get": {
+        "tags": ["ShortMax"],
+        "summary": "All Episodes",
+        "parameters": [{ "name": "shortPlayId", "in": "query", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Success" } }
+      }
+    },
+    "/dramabox/detail": {
+      "get": {
+        "tags": ["DramaBox"],
+        "summary": "Drama Details",
+        "parameters": [{ "name": "bookId", "in": "query", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Success" } }
+      }
+    },
+    "/dramabox/allepisode": {
+      "get": {
+        "tags": ["DramaBox"],
+        "summary": "All Episodes",
+        "parameters": [{ "name": "bookId", "in": "query", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Success" } }
+      }
+    },
     "/dramabox/search": {
       "get": {
         "tags": ["DramaBox"],
         "summary": "Search Dramas",
         "parameters": [{ "name": "query", "in": "query", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Success" } }
+      }
+    },
+    "/reelshort/search": {
+      "get": {
+        "tags": ["ReelShort"],
+        "summary": "Search Dramas",
+        "parameters": [{ "name": "query", "in": "query", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Success" } }
+      }
+    },
+    "/reelshort/detail": {
+      "get": {
+        "tags": ["ReelShort"],
+        "summary": "Drama Details",
+        "parameters": [{ "name": "bookId", "in": "query", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Success" } }
+      }
+    },
+    "/reelshort/allepisode": {
+      "get": {
+        "tags": ["ReelShort"],
+        "summary": "All Episodes",
+        "parameters": [{ "name": "bookId", "in": "query", "required": true, "schema": { "type": "string" } }],
         "responses": { "200": { "description": "Success" } }
       }
     },

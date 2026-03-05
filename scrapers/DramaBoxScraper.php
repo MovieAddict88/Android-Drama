@@ -30,18 +30,26 @@ class DramaBoxScraper {
 
     private function getNextData($url) {
         $html = $this->fetch($url);
-        if (!$html) return null;
-
-        if (preg_match('/<script id="__NEXT_DATA__" type="application\/json">(.*?)<\/script>/', $html, $matches)) {
-            return json_decode($matches[1], true);
+        if (!$html) {
+            error_log("DramaBoxScraper: Failed to fetch $url");
+            return null;
         }
 
+        if (preg_match('/<script id="__NEXT_DATA__" type="application\/json"[^>]*>(.*?)<\/script>/s', $html, $matches)) {
+            $data = json_decode($matches[1], true);
+            if (!$data) {
+                error_log("DramaBoxScraper: Failed to decode JSON from $url");
+            }
+            return $data;
+        }
+
+        error_log("DramaBoxScraper: __NEXT_DATA__ not found in $url");
         return null;
     }
 
     public function getTrending() {
         $data = $this->getNextData($this->baseUrl);
-        if (!$data) return ["s" => 1, "m" => "Data not found", "data" => []];
+        if (!$data) return ["s" => 1, "m" => "Data not found or fetch failed", "data" => []];
 
         try {
             // New path based on observed structure
@@ -87,13 +95,26 @@ class DramaBoxScraper {
     }
 
     public function getDetails($bookId) {
-        $url = $this->baseUrl . "/book/" . $bookId;
-        $data = $this->getNextData($url);
+        $data = $this->getNextData($this->baseUrl);
         if (!$data) return ["s" => 1, "m" => "Details not found", "data" => []];
 
         try {
-            $book = $data['props']['pageProps']['initialState']['book']['bookDetail'] ?? [];
-            return ["s" => 0, "m" => "Success", "data" => $book];
+            $list = array_merge($data['props']['pageProps']['bigList'] ?? [], $data['props']['pageProps']['smallData']['list'] ?? []);
+            foreach ($list as $book) {
+                if (($book['bookId'] ?? '') == $bookId) {
+                    return ["s" => 0, "m" => "Success", "data" => $book];
+                }
+            }
+
+            // If not in home list, try fetching the specific page (though currently it returns 404/empty for us)
+            $url = $this->baseUrl . "/book/" . $bookId;
+            $bookData = $this->getNextData($url);
+            if ($bookData) {
+                 $book = $bookData['props']['pageProps']['initialState']['book']['bookDetail'] ?? [];
+                 if (!empty($book)) return ["s" => 0, "m" => "Success", "data" => $book];
+            }
+
+            return ["s" => 1, "m" => "Book not found in home lists", "data" => []];
         } catch (Exception $e) {
             return ["s" => 1, "m" => $e->getMessage(), "data" => []];
         }
@@ -102,11 +123,37 @@ class DramaBoxScraper {
     public function getEpisodes($bookId) {
         $url = $this->baseUrl . "/book/" . $bookId;
         $data = $this->getNextData($url);
-        if (!$data) return ["s" => 1, "m" => "Episodes not found", "data" => []];
+
+        // If /book/id fails, try /play/id/first_episode_id if we can find it
+        if (!$data) {
+             $homeData = $this->getNextData($this->baseUrl);
+             $list = array_merge($homeData['props']['pageProps']['bigList'] ?? [], $homeData['props']['pageProps']['smallData']['list'] ?? []);
+             foreach ($list as $book) {
+                 if (($book['bookId'] ?? '') == $bookId) {
+                     // We don't have the first episode ID easily, but some sites use 0 or 1
+                     // For now, if /book/id fails, we're stuck without a better discovery mechanism
+                     break;
+                 }
+             }
+        }
+
+        if (!$data) return ["s" => 1, "m" => "Episodes not found (404 or Parsing failed)", "data" => []];
 
         try {
             $episodes = $data['props']['pageProps']['initialState']['book']['chapterList'] ?? [];
-            return ["s" => 0, "m" => "Success", "data" => $episodes];
+            if (empty($episodes)) {
+                 $episodes = $data['props']['pageProps']['fallback']["/api/video/book/chapters?book_id=$bookId"] ?? [];
+            }
+
+            // Map to include a play URL if missing
+            $mapped = array_map(function($ep) use ($bookId) {
+                if (!isset($ep['play_url']) && isset($ep['chapterId'])) {
+                    $ep['play_url'] = $this->baseUrl . "/play/" . $bookId . "/" . $ep['chapterId'];
+                }
+                return $ep;
+            }, $episodes);
+
+            return ["s" => 0, "m" => "Success", "data" => $mapped];
         } catch (Exception $e) {
             return ["s" => 1, "m" => $e->getMessage(), "data" => []];
         }

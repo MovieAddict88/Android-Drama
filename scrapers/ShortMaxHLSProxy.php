@@ -10,6 +10,23 @@ class ShortMaxHLSProxy {
             return;
         }
 
+        $parsed = parse_url($url);
+        $allowedDomains = ['shortmax.tv', 'dramabox.com', 'reelshort.com', 'crazymaplestudios.com', 'dramaboxdb.com'];
+        $host = $parsed['host'] ?? '';
+        $allowed = false;
+        foreach ($allowedDomains as $domain) {
+            if ($host === $domain || substr($host, -strlen('.' . $domain)) === '.' . $domain) {
+                $allowed = true;
+                break;
+            }
+        }
+
+        if (!$allowed) {
+            http_response_code(403);
+            echo "Domain not allowed";
+            return;
+        }
+
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
