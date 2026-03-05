@@ -16,6 +16,7 @@ class Router {
     }
 
     private function loadRoutes() {
+        $this->addRoute('GET', '/api/ping', ['Router', 'ping']);
         // Core Drama Platforms
         $this->addRoute('GET', '/api/dramabox/foryou', ['DramaBoxScraper', 'getForYou']);
         $this->addRoute('GET', '/api/dramabox/vip', ['DramaBoxScraper', 'getForYou']);
@@ -54,18 +55,13 @@ class Router {
 
     public function handleRequest() {
         $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-        $uri = $_SERVER['REQUEST_URI'] ?? '/';
 
-        // Remove subdirectory if present
-        $scriptName = dirname($_SERVER['SCRIPT_NAME']);
-        if ($scriptName !== '/' && strpos($uri, $scriptName) === 0) {
-            $uri = substr($uri, strlen($scriptName));
-        }
+        // Robust path detection for shared hosting
+        $path = $_SERVER['PATH_INFO'] ?? $_SERVER['REDIRECT_URL'] ?? parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
 
-        // Remove index.php from path
-        $uri = str_replace('/index.php', '', $uri);
-
-        $path = parse_url($uri, PHP_URL_PATH) ?: '/';
+        // Normalize: remove index.php if it's explicitly in the path
+        $path = str_replace('/index.php', '', $path);
+        if (empty($path)) $path = '/';
 
         foreach ($this->routes as $route) {
             if ($route['method'] === $method && $route['path'] === $path) {
