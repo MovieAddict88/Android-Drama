@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyDramaWave ID Scraper</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0f0f0f;
+            color: #ffffff;
+            margin: 0;
+            padding: 20px;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #333;
+            margin-bottom: 20px;
+        }
+        h1 { margin: 0; font-size: 24px; color: #e91e63; }
+        #status { font-size: 14px; color: #aaa; }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 20px;
+        }
+        .card {
+            background: #1a1a1a;
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.3s ease;
+            border: 1px solid #222;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: #e91e63;
+            box-shadow: 0 5px 15px rgba(233, 30, 99, 0.3);
+        }
+        .card img {
+            width: 100%;
+            aspect-ratio: 2/3;
+            object-fit: cover;
+            background-color: #2a2a2a;
+        }
+        .card .info {
+            padding: 12px;
+        }
+        .card .title {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .card .id-label {
+            font-size: 12px;
+            color: #888;
+            font-family: monospace;
+        }
+        .copied-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #4caf50;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: bold;
+            display: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+        }
+        .card.is-copied .copied-badge {
+            display: block;
+        }
+        .card.is-copied {
+            border-color: #4caf50;
+        }
+        .loading-spinner {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 50px;
+            color: #aaa;
+        }
+        #toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #323232;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 1000;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>DramaWave Scraper</h1>
+        <div id="status">Initializing...</div>
+    </header>
+
+    <div style="margin-bottom: 20px; display: flex; gap: 10px;">
+        <input type="text" id="search-input" placeholder="Search for a drama..." style="flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #1a1a1a; color: white; outline: none;">
+        <input type="text" id="url-input" placeholder="Paste link to extract ID..." style="flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #1a1a1a; color: white; outline: none;">
+    </div>
+
+    <div class="grid" id="drama-grid">
+        <div class="loading-spinner">Fetching dramas from MyDramaWave...</div>
+    </div>
+
+    <div id="toast">ID Copied to clipboard!</div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script>
+        const grid = document.getElementById('drama-grid');
+        const status = document.getElementById('status');
+        const toast = document.getElementById('toast');
+        const searchInput = document.getElementById('search-input');
+        const urlInput = document.getElementById('url-input');
+        const API_BASE = 'https://api.mydramawave.com';
+        const PROXY = 'https://api.allorigins.win/raw?url=';
+        const ENCRYPTION_KEY = '2r36789f45q01ae5';
+
+        let copiedIds = JSON.parse(localStorage.getItem('copiedIds') || '[]');
+
+        function showToast(message) {
+            toast.textContent = message;
+            toast.style.opacity = '1';
+            setTimeout(() => {
+                toast.style.opacity = '0';
+            }, 2000);
+        }
+
+        function decrypt(data) {
+            try {
+                const key = CryptoJS.enc.Utf8.parse(ENCRYPTION_KEY);
+                const iv = key;
+                const decrypted = CryptoJS.AES.decrypt(data, key, {
+                    iv: iv,
+                    mode: CryptoJS.mode.CBC,
+                    padding: CryptoJS.pad.Pkcs7
+                });
+                const decryptedStr = decrypted.toString(CryptoJS.enc.Utf8);
+                return JSON.parse(decryptedStr);
+            } catch (e) {
+                console.error('Decryption failed:', e);
+                return null;
+            }
+        }
+
+        async function fetchWithAuth(url, options = {}) {
+            const defaultHeaders = {
+                'Platform': 'h5',
+                'Version': '1.0.0',
+                'Accept': 'application/json',
+                'Skip-Encrypt': '1',
+                'App-Name': 'com.dramawave.h5'
+            };
+
+            // Note: Many proxies don't forward all headers. allorigins.win forwards some but not all.
+            // MyDramaWave API might be rejecting due to missing headers or proxy detection.
+            const response = await fetch(`${PROXY}${encodeURIComponent(url)}`, {
+                ...options,
+                headers: {
+                    ...defaultHeaders,
+                    ...options.headers
+                }
+            });
+
+            const text = await response.text();
+            try {
+                // Remove allorigins wrapper if it exists (though raw proxy shouldn't have it)
+                const data = JSON.parse(text);
+                if (data.contents) return JSON.parse(data.contents);
+                return data;
+            } catch {
+                return decrypt(text);
+            }
+        }
+
+        async function searchDramas(keyword = '') {
+            try {
+                status.textContent = keyword ? `Searching for "${keyword}"...` : 'Fetching popular dramas...';
+
+                let endpoint = API_BASE + '/h5-api/search/hot-list';
+                let body = {};
+
+                if (keyword) {
+                    endpoint = API_BASE + '/h5-api/search/drama';
+                    body = { keyword, page: 1, page_size: 20 };
+                }
+
+                const response = await fetchWithAuth(endpoint, {
+                    method: 'POST',
+                    body: JSON.stringify(body)
+                });
+
+                if (response && response.code === 200 && response.data && response.data.items) {
+                    renderContent(response.data.items);
+                    status.textContent = keyword ? `Found ${response.data.items.length} results` : 'Ready';
+                } else {
+                    if (!keyword) {
+                        status.textContent = 'Discovery fallback mode';
+                        useFallbackData();
+                    } else {
+                        status.textContent = 'No results found';
+                        grid.innerHTML = '<div class="loading-spinner">No results found for your search.</div>';
+                    }
+                }
+            } catch (error) {
+                console.error('Search error:', error);
+                if (!keyword) useFallbackData();
+            }
+        }
+
+        let searchTimeout;
+        searchInput.oninput = (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                searchDramas(e.target.value.trim());
+            }, 500);
+        };
+
+        urlInput.oninput = (e) => {
+            const url = e.target.value.trim();
+            if (!url) return;
+
+            // Extract ID from URL: https://m.mydramawave.com/series/MZS0CyDOtb/2Uaq4xlsza?
+            const match = url.match(/\/series\/([^\/]+)/);
+            if (match && match[1]) {
+                const id = match[1];
+                copyToClipboard(id);
+                urlInput.value = '';
+                showToast(`Extracted ID: ${id}`);
+            }
+        };
+
+        function useFallbackData() {
+            const fallbackItems = [
+                { series_id: 'MZS0CyDOtb', title: 'The CEO Secret Love', poster: 'https://static-v1.mydramawave.com/frontend_static/Logo.png' },
+                { series_id: '2Uaq4xlsza', title: 'My Husband is a Hero', poster: 'https://static-v1.mydramawave.com/frontend_static/Logo.png' },
+                { series_id: 'N8kX2P9q1Z', title: 'Forbidden Romance', poster: 'https://static-v1.mydramawave.com/frontend_static/Logo.png' },
+                { series_id: 'J5mR7vW4kL', title: 'The Lost Heir', poster: 'https://static-v1.mydramawave.com/frontend_static/Logo.png' }
+            ];
+            renderContent(fallbackItems);
+        }
+
+        function renderContent(items) {
+            grid.innerHTML = '';
+            if (items.length === 0) {
+                grid.innerHTML = '<div class="loading-spinner">No dramas found.</div>';
+                return;
+            }
+
+            items.forEach(item => {
+                const id = item.series_id || item.id;
+                const title = item.title || item.name || 'Untitled';
+                const poster = item.poster || item.cover_url || 'https://static-v1.mydramawave.com/frontend_static/Logo.png';
+
+                const card = document.createElement('div');
+                card.className = `card ${copiedIds.includes(id) ? 'is-copied' : ''}`;
+                card.innerHTML = `
+                    <div class="copied-badge">COPIED</div>
+                    <img src="${poster}" alt="${title}" onerror="this.src='https://static-v1.mydramawave.com/frontend_static/Logo.png'">
+                    <div class="info">
+                        <div class="title">${title}</div>
+                        <div class="id-label">${id}</div>
+                    </div>
+                `;
+
+                card.onclick = () => {
+                    copyToClipboard(id, card);
+                };
+
+                grid.appendChild(card);
+            });
+        }
+
+        function copyToClipboard(id, element) {
+            const tempInput = document.createElement('input');
+            tempInput.value = id;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+
+            showToast(`Copied ID: ${id}`);
+
+            if (!copiedIds.includes(id)) {
+                copiedIds.push(id);
+                localStorage.setItem('copiedIds', JSON.stringify(copiedIds));
+            }
+
+            if (element) {
+                element.classList.add('is-copied');
+            } else {
+                // If copied via URL input, try to find the card in the grid and mark it
+                const cards = document.querySelectorAll('.card');
+                cards.forEach(card => {
+                    if (card.querySelector('.id-label').textContent === id) {
+                        card.classList.add('is-copied');
+                    }
+                });
+            }
+        }
+
+        searchDramas();
+    </script>
+</body>
+</html>
