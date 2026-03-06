@@ -118,8 +118,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
             <div>
                 <label class="block text-sm font-medium mb-1">DRAMABOX_TOKEN_URL</label>
-                <input type="url" name="token_url" placeholder="https://..." required class="w-full p-2 bg-slate-700 border border-slate-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <p class="text-xs text-slate-400 mt-1">URL to fetch DramaBox auth token.</p>
+                <input type="url" name="token_url" value="https://dramabox.sansekai.my.id/api/token" required class="w-full p-2 bg-slate-700 border border-slate-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <p class="text-xs text-slate-400 mt-1">URL to fetch DramaBox auth token. Default is a public community provider.</p>
             </div>
             <button type="submit" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition duration-200">
                 Install Now
