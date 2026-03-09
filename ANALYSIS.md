@@ -28,3 +28,29 @@ The "small size" is achieved by offloading all application logic and assets to a
 
 ### Ethical Conclusion
 The distribution method and internal logic of this link are **highly suspicious**. It utilizes a "small size api" pattern not for efficiency, but to maintain a stealthy presence on the user's device while retaining full remote control over the content. Users should be strongly advised against downloading or installing applications from such sources.
+
+## Analysis of CignalPlay Live TV API: `https://www.cignalplay.com/livetvtab`
+
+### 1. Discovery and Entry Point
+CignalPlay uses a CDN-backed storefront API to manage its web interface. The primary entry point for discovering the application structure is:
+`https://storefront-cdn.api.pldt.firstlight.ai/storefront/list?reg=ph&dt=web&client=pldt-cignal-web`
+
+This API returns a large JSON object representing the "Storefront", containing various tabs (HOME, LIVE TV, MOVIES, etc.).
+
+### 2. Live TV Data Extraction
+The "LIVE TV" tab is divided into "Containers" (e.g., Local, Sports, Entertainment). Each container includes a `cu` (Content URL) that points to a specific detail API endpoint:
+`https://data-store.api.pldt.firstlight.ai/content?mode=detail&st=published&ids=[COMMA_SEPARATED_IDS]`
+
+To access these details, specific query parameters are required:
+- `client=pldt-cignal-web`
+- `reg=ph`
+- `dt=web`
+
+### 3. Implementation of Scraper
+A Python-based scraper (`CignalScraper.py`) has been developed to:
+1.  Fetch the global storefront.
+2.  Locate the Live TV section.
+3.  Batch-query the Content API for each channel's metadata.
+4.  Consolidate unique channels into a structured JSON format (`channels_list.json`).
+
+The analysis successfully identified 70 unique live channels currently available on the platform through these API endpoints.
