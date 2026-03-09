@@ -1,0 +1,632 @@
+[
+  {
+    "name": "Wil TV",
+    "id": "F7AA8685-359E-4189-8D69-A04E0B8B9E0B",
+    "category": "Local",
+    "description": "General Entertainment",
+    "quality": "FHD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/F7AA8685-359E-4189-8D69-A04E0B8B9E0B"
+  },
+  {
+    "name": "TV5 HD",
+    "id": "E55A97A2-C9E1-11EC-9D64-0242AC120002",
+    "category": "Local",
+    "description": "General Entertainment",
+    "quality": "SD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55A97A2-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "RPTV HD",
+    "id": "44B03994-C303-4ACE-997C-91CAC493D0FC",
+    "category": "Local",
+    "description": "General Entertainment",
+    "quality": "FHD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/44B03994-C303-4ACE-997C-91CAC493D0FC"
+  },
+  {
+    "name": "True FM TV",
+    "id": "4514F052-94DC-47C5-8BB1-DA42BD5F2F57",
+    "category": "Local",
+    "description": "General Entertainment",
+    "quality": "FHD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/4514F052-94DC-47C5-8BB1-DA42BD5F2F57"
+  },
+  {
+    "name": "Kapatid Channel",
+    "id": "F222CD8E-81E5-4D77-AC2F-86E7129C2DD7",
+    "category": "Local",
+    "description": "FTA",
+    "quality": "FHD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/F222CD8E-81E5-4D77-AC2F-86E7129C2DD7"
+  },
+  {
+    "name": "CELESTIAL MOVIE PINOY",
+    "id": "E55A9F0E-C9E1-11EC-9D64-0242AC120002",
+    "category": "Movies",
+    "description": "Pinoy",
+    "quality": "SD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55A9F0E-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "A2Z",
+    "id": "E55A5580-C9E1-11EC-9D64-0242AC120002",
+    "category": "Local",
+    "description": "General Entertainment",
+    "quality": "SD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55A5580-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "PTV 4",
+    "id": "E55A5F08-C9E1-11EC-9D64-0242AC120002",
+    "category": "Local",
+    "description": "General Entertainment",
+    "quality": "SD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55A5F08-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "IBC 13",
+    "id": "E55ABC0A-C9E1-11EC-9D64-0242AC120002",
+    "category": "Local",
+    "description": "General Entertainment",
+    "quality": "SD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55ABC0A-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "Buko",
+    "id": "E55AD956-C9E1-11EC-9D64-0242AC120002",
+    "category": "Local",
+    "description": "Pinoy",
+    "quality": "SD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55AD956-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "NBA TV Philippines",
+    "id": "3327FF64-3E52-42DE-B516-4629BFABA8C7",
+    "category": "Sports",
+    "description": "Sports",
+    "quality": "FHD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/3327FF64-3E52-42DE-B516-4629BFABA8C7"
+  },
+  {
+    "name": "Premier Sports HD",
+    "id": "E55A6228-C9E1-11EC-9D64-0242AC120002",
+    "category": "Sports",
+    "description": "Sports",
+    "quality": "FHD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55A6228-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "Premier Sports 2",
+    "id": "E55A899C-C9E1-11EC-9D64-0242AC120002",
+    "category": "Sports",
+    "description": "Sports",
+    "quality": "FHD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55A899C-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "One Sports HD",
+    "id": "E55AB750-C9E1-11EC-9D64-0242AC120002",
+    "category": "Sports",
+    "description": "Sports",
+    "quality": "SD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55AB750-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "PBA Rush",
+    "id": "E55A7650-C9E1-11EC-9D64-0242AC120002",
+    "category": "Sports",
+    "description": "Sports",
+    "quality": "FHD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55A7650-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "UAAP Varsity Channel",
+    "id": "E55A869A-C9E1-11EC-9D64-0242AC120002",
+    "category": "Sports",
+    "description": "Sports",
+    "quality": "FHD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55A869A-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "One Sports+",
+    "id": "E55A696C-C9E1-11EC-9D64-0242AC120002",
+    "category": "Sports",
+    "description": "Sports",
+    "quality": "FHD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55A696C-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "Tap Sports",
+    "id": "E55A6624-C9E1-11EC-9D64-0242AC120002",
+    "category": "Sports",
+    "description": "Sports",
+    "quality": "SD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55A6624-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "Rock Entertainment",
+    "id": "E55A6C78-C9E1-11EC-9D64-0242AC120002",
+    "category": "Entertainment",
+    "description": "General Entertainment",
+    "quality": "SD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55A6C78-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "HITS NOW",
+    "id": "68C2D95A-A2A4-4C2B-93BE-41893C61210C",
+    "category": "Entertainment",
+    "description": "General Entertainment",
+    "quality": "FHD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/68C2D95A-A2A4-4C2B-93BE-41893C61210C"
+  },
+  {
+    "name": "Global Trekker",
+    "id": "09A671F2-39E7-47AF-BC9B-53AB53BC7FD0",
+    "category": "Entertainment",
+    "description": "General Entertainment",
+    "quality": "FHD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/09A671F2-39E7-47AF-BC9B-53AB53BC7FD0"
+  },
+  {
+    "name": "Warner TV HD",
+    "id": "E55ABA02-C9E1-11EC-9D64-0242AC120002",
+    "category": "Entertainment",
+    "description": "General Entertainment",
+    "quality": "FHD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55ABA02-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "HGTV HD",
+    "id": "E55A858C-C9E1-11EC-9D64-0242AC120002",
+    "category": "Entertainment",
+    "description": "Lifestyle",
+    "quality": "FHD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55A858C-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "Food Network HD",
+    "id": "E55A9496-C9E1-11EC-9D64-0242AC120002",
+    "category": "Entertainment",
+    "description": "Lifestyle",
+    "quality": "FHD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55A9496-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "Fashion TV HD",
+    "id": "E55A9D06-C9E1-11EC-9D64-0242AC120002",
+    "category": "Entertainment",
+    "description": "Lifestyle",
+    "quality": "FHD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55A9D06-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "AXN",
+    "id": "E55AC36C-C9E1-11EC-9D64-0242AC120002",
+    "category": "Entertainment",
+    "description": "General Entertainment",
+    "quality": "SD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55AC36C-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "Lifetime SD",
+    "id": "E55A80E6-C9E1-11EC-9D64-0242AC120002",
+    "category": "Entertainment",
+    "description": "General Entertainment",
+    "quality": "SD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55A80E6-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "HITS HD",
+    "id": "E55A8BB8-C9E1-11EC-9D64-0242AC120002",
+    "category": "Entertainment",
+    "description": "General Entertainment",
+    "quality": "FHD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55A8BB8-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "HBO HD",
+    "id": "B741DD7A-A7F8-4F8A-A549-9EF411020F9D",
+    "category": "Movies",
+    "description": "Movies",
+    "quality": "FHD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/B741DD7A-A7F8-4F8A-A549-9EF411020F9D"
+  },
+  {
+    "name": "HITS MOVIES",
+    "id": "E55ACF06-C9E1-11EC-9D64-0242AC120002",
+    "category": "Movies",
+    "description": "Movies",
+    "quality": "SD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55ACF06-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "TAP Movies HD",
+    "id": "E55AC48E-C9E1-11EC-9D64-0242AC120002",
+    "category": "Movies",
+    "description": "Movies",
+    "quality": "FHD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55AC48E-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "Rock Action",
+    "id": "E55A6520-C9E1-11EC-9D64-0242AC120002",
+    "category": "Movies",
+    "description": "General Entertainment",
+    "quality": "SD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55A6520-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "HBO Family HD",
+    "id": "62F1A4ED-EB56-49DF-912D-0A2388131772",
+    "category": "Movies",
+    "description": "Movies",
+    "quality": "FHD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/62F1A4ED-EB56-49DF-912D-0A2388131772"
+  },
+  {
+    "name": "Cinemax HD",
+    "id": "BC3C51E7-F1A5-46DE-979D-65DC483AE59C",
+    "category": "Movies",
+    "description": "Movies",
+    "quality": "FHD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/BC3C51E7-F1A5-46DE-979D-65DC483AE59C"
+  },
+  {
+    "name": "HBO Signature HD",
+    "id": "D5127959-34E4-41B2-AA80-CE74DDC2C3C4",
+    "category": "Movies",
+    "description": "General Entertainment",
+    "quality": "FHD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/D5127959-34E4-41B2-AA80-CE74DDC2C3C4"
+  },
+  {
+    "name": "HBO Hits HD",
+    "id": "CEE83EE5-D870-4B3C-9339-ACA7FF4020D0",
+    "category": "Movies",
+    "description": "Movies",
+    "quality": "FHD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/CEE83EE5-D870-4B3C-9339-ACA7FF4020D0"
+  },
+  {
+    "name": "CNN HD",
+    "id": "E55A5468-C9E1-11EC-9D64-0242AC120002",
+    "category": "News",
+    "description": "News",
+    "quality": "FHD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55A5468-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "One PH",
+    "id": "E55A9392-C9E1-11EC-9D64-0242AC120002",
+    "category": "News",
+    "description": "News",
+    "quality": "SD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55A9392-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "One News",
+    "id": "E55A7DDA-C9E1-11EC-9D64-0242AC120002",
+    "category": "News",
+    "description": "News",
+    "quality": "FHD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55A7DDA-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "Bilyonaryo News Channel",
+    "id": "166677E4-33C5-4C3B-A09D-7B3442D99E77",
+    "category": "News",
+    "description": "News",
+    "quality": "FHD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/166677E4-33C5-4C3B-A09D-7B3442D99E77"
+  },
+  {
+    "name": "Bloomberg",
+    "id": "E55AA47C-C9E1-11EC-9D64-0242AC120002",
+    "category": "News",
+    "description": "Kids",
+    "quality": "SD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55AA47C-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "CNA",
+    "id": "E55AD122-C9E1-11EC-9D64-0242AC120002",
+    "category": "News",
+    "description": "News",
+    "quality": "SD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55AD122-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "Al Jazeera",
+    "id": "E55A9284-C9E1-11EC-9D64-0242AC120002",
+    "category": "News",
+    "description": "News",
+    "quality": "SD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55A9284-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "Moonbug Kids",
+    "id": "E55AC696-C9E1-11EC-9D64-0242AC120002",
+    "category": "Kids",
+    "description": "Kids",
+    "quality": "SD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55AC696-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "DreamWorks (Tagalized)",
+    "id": "40E328E7-FE69-4287-86EA-FA942A7EA302",
+    "category": "Kids",
+    "description": "Kids",
+    "quality": "FHD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/40E328E7-FE69-4287-86EA-FA942A7EA302"
+  },
+  {
+    "name": "Animax",
+    "id": "E55ABB06-C9E1-11EC-9D64-0242AC120002",
+    "category": "Kids",
+    "description": "Kids",
+    "quality": "SD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55ABB06-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "DreamWorks HD",
+    "id": "E55A5698-C9E1-11EC-9D64-0242AC120002",
+    "category": "Kids",
+    "description": "Kids",
+    "quality": "FHD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55A5698-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "Nickelodeon SD",
+    "id": "E55ADD5C-C9E1-11EC-9D64-0242AC120002",
+    "category": "Kids",
+    "description": "Kids",
+    "quality": "SD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55ADD5C-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "History HD",
+    "id": "E55A9C02-C9E1-11EC-9D64-0242AC120002",
+    "category": "Educational",
+    "description": "Factual",
+    "quality": "FHD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55A9C02-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "Knowledge Channel",
+    "id": "E55ADA5A-C9E1-11EC-9D64-0242AC120002",
+    "category": "Educational",
+    "description": "Factual",
+    "quality": "SD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55ADA5A-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "DepEd TV",
+    "id": "E55A9590-C9E1-11EC-9D64-0242AC120002",
+    "category": "Educational",
+    "description": "Factual",
+    "quality": "SD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55A9590-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "CGTN",
+    "id": "DEFC81EE-883B-446F-BD47-21F5B7FE0730",
+    "category": "Asian & Foreign",
+    "description": "Foreign",
+    "quality": "FHD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/DEFC81EE-883B-446F-BD47-21F5B7FE0730"
+  },
+  {
+    "name": "tvN Premium HD",
+    "id": "66B5278C-75EA-4D93-AD2B-A5822A0F1056",
+    "category": "Asian & Foreign",
+    "description": "General Entertainment",
+    "quality": "FHD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/66B5278C-75EA-4D93-AD2B-A5822A0F1056"
+  },
+  {
+    "name": "KBS World SD",
+    "id": "E55A7CE0-C9E1-11EC-9D64-0242AC120002",
+    "category": "Asian & Foreign",
+    "description": "General Entertainment",
+    "quality": "SD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55A7CE0-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "NHK World Japan",
+    "id": "E55AA896-C9E1-11EC-9D64-0242AC120002",
+    "category": "Asian & Foreign",
+    "description": "Foreign",
+    "quality": "SD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55AA896-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "Arirang",
+    "id": "E55A7754-C9E1-11EC-9D64-0242AC120002",
+    "category": "Asian & Foreign",
+    "description": "Foreign",
+    "quality": "SD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55A7754-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "CCTV 4",
+    "id": "E55A7448-C9E1-11EC-9D64-0242AC120002",
+    "category": "Asian & Foreign",
+    "description": "Foreign",
+    "quality": "SD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55A7448-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "ABC Australia",
+    "id": "E55ACCD6-C9E1-11EC-9D64-0242AC120002",
+    "category": "Asian & Foreign",
+    "description": "Foreign",
+    "quality": "SD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55ACCD6-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "France 24",
+    "id": "E55AC9B6-C9E1-11EC-9D64-0242AC120002",
+    "category": "Asian & Foreign",
+    "description": "Foreign",
+    "quality": "SD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55AC9B6-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "TV5 Monde",
+    "id": "E55ADB5E-C9E1-11EC-9D64-0242AC120002",
+    "category": "Asian & Foreign",
+    "description": "Foreign",
+    "quality": "SD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55ADB5E-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "BBC News",
+    "id": "E55A847E-C9E1-11EC-9D64-0242AC120002",
+    "category": "Cignal TV Exclusives",
+    "description": "News",
+    "quality": "SD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55A847E-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "Animal Planet",
+    "id": "E55A57B0-C9E1-11EC-9D64-0242AC120002",
+    "category": "Cignal TV Exclusives",
+    "description": "Factual",
+    "quality": "SD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55A57B0-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "BBC Earth HD",
+    "id": "E55A6868-C9E1-11EC-9D64-0242AC120002",
+    "category": "Cignal TV Exclusives",
+    "description": "Factual",
+    "quality": "FHD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55A6868-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "Discovery Channel SD",
+    "id": "E55A734E-C9E1-11EC-9D64-0242AC120002",
+    "category": "Cignal TV Exclusives",
+    "description": "Factual",
+    "quality": "SD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55A734E-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "Asian Food Network",
+    "id": "E55AB020-C9E1-11EC-9D64-0242AC120002",
+    "category": "Cignal TV Exclusives",
+    "description": "Lifestyle",
+    "quality": "SD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55AB020-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "Travel Channel SD",
+    "id": "E55A8898-C9E1-11EC-9D64-0242AC120002",
+    "category": "Cignal TV Exclusives",
+    "description": "Lifestyle",
+    "quality": "SD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55A8898-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "Cartoon Network HD",
+    "id": "E55A51FC-C9E1-11EC-9D64-0242AC120002",
+    "category": "Cignal TV Exclusives",
+    "description": "Kids",
+    "quality": "FHD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55A51FC-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "Nick Jr",
+    "id": "E55AB8E0-C9E1-11EC-9D64-0242AC120002",
+    "category": "Cignal TV Exclusives",
+    "description": "Kids",
+    "quality": "SD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55AB8E0-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "Crime & Investigation",
+    "id": "E55AD5C8-C9E1-11EC-9D64-0242AC120002",
+    "category": "Cignal TV Exclusives",
+    "description": "General Entertainment",
+    "quality": "FHD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55AD5C8-C9E1-11EC-9D64-0242AC120002"
+  },
+  {
+    "name": "Kix HD",
+    "id": "E55A7EE8-C9E1-11EC-9D64-0242AC120002",
+    "category": "Cignal TV Exclusives",
+    "description": "General Entertainment",
+    "quality": "FHD",
+    "type": "channel",
+    "watch_url": "https://www.cignalplay.com/watch/E55A7EE8-C9E1-11EC-9D64-0242AC120002"
+  }
+]
