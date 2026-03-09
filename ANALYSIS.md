@@ -51,6 +51,7 @@ A Python-based scraper (`CignalScraper.py`) has been developed to:
 1.  Fetch the global storefront.
 2.  Locate the Live TV section.
 3.  Batch-query the Content API for each channel's metadata.
-4.  Consolidate unique channels into a structured JSON format (`channels_list.json`).
+4.  Save the data to a structured JSON file (`channels.json`).
+5.  Generate a responsive HTML report (`channels.html`) for easy viewing.
 
 The analysis successfully identified 70 unique live channels currently available on the platform through these API endpoints.

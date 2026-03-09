@@ -18,7 +18,7 @@ class CignalScraper:
     def fetch_storefront(self):
         logging.info("Fetching Storefront...")
         try:
-            response = self.session.get(self.STOREFRONT_URL, headers=self.headers, verify=False)
+            response = self.session.get(self.STOREFRONT_URL, headers=self.headers)
             if response.status_code == 200:
                 return response.json()
             else:
@@ -59,7 +59,7 @@ class CignalScraper:
 
     def fetch_content_details(self, url, category):
         try:
-            response = self.session.get(url, headers=self.headers, verify=False)
+            response = self.session.get(url, headers=self.headers)
             if response.status_code == 200:
                 data = response.json()
                 channels = []
@@ -85,7 +85,62 @@ if __name__ == "__main__":
     channels = scraper.get_live_tv_channels()
 
     # Remove duplicates by ID
-    unique_channels = {c['id']: c for c in channels}.values()
+    unique_channels_list = list({c['id']: c for c in channels}.values())
 
-    print(json.dumps(list(unique_channels), indent=2))
-    logging.info(f"\nTotal unique channels found: {len(unique_channels)}")
+    # Save to JSON
+    with open('channels.json', 'w') as jf:
+        json.dump(unique_channels_list, jf, indent=2)
+    logging.info(f"Saved {len(unique_channels_list)} channels to channels.json")
+
+    # Generate HTML
+    html_content = f"""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>CignalPlay Live TV Channels</title>
+        <style>
+            body {{ font-family: sans-serif; background: #121212; color: #eee; padding: 20px; }}
+            table {{ width: 100%; border-collapse: collapse; margin-top: 20px; }}
+            th, td {{ padding: 12px; text-align: left; border-bottom: 1px solid #333; }}
+            th {{ background-color: #1f1f1f; color: #ffcc00; }}
+            tr:hover {{ background-color: #1a1a1a; }}
+            .badge {{ padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; }}
+            .badge-fhd {{ background: #ffcc00; color: #000; }}
+            .badge-sd {{ background: #666; color: #fff; }}
+        </style>
+    </head>
+    <body>
+        <h1>CignalPlay Live TV Channels</h1>
+        <p>Total unique channels: {len(unique_channels_list)}</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Category</th>
+                    <th>Quality</th>
+                    <th>ID</th>
+                </tr>
+            </thead>
+            <tbody>
+    """
+    for ch in unique_channels_list:
+        quality_class = "badge-fhd" if ch['quality'] == "FHD" else "badge-sd"
+        html_content += f"""
+                <tr>
+                    <td><strong>{ch['name']}</strong></td>
+                    <td>{ch['category']}</td>
+                    <td><span class="badge {quality_class}">{ch['quality']}</span></td>
+                    <td><code>{ch['id']}</code></td>
+                </tr>
+        """
+    html_content += """
+            </tbody>
+        </table>
+    </body>
+    </html>
+    """
+    with open('channels.html', 'w') as hf:
+        hf.write(html_content)
+    logging.info(f"Generated channels.html")
