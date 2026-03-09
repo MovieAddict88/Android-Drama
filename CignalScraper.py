@@ -70,7 +70,8 @@ class CignalScraper:
                         "category": category,
                         "description": entry.get("log")[0].get("n")[0] if entry.get("log") else "",
                         "quality": entry.get("vq"),
-                        "type": entry.get("cty")
+                        "type": entry.get("cty"),
+                        "watch_url": f"https://www.cignalplay.com/watch/{entry.get('id')}"
                     }
                     channels.append(channel_info)
                 return channels
@@ -120,7 +121,7 @@ if __name__ == "__main__":
                     <th>Name</th>
                     <th>Category</th>
                     <th>Quality</th>
-                    <th>ID</th>
+                    <th>Watch Page</th>
                 </tr>
             </thead>
             <tbody>
@@ -132,7 +133,7 @@ if __name__ == "__main__":
                     <td><strong>{ch['name']}</strong></td>
                     <td>{ch['category']}</td>
                     <td><span class="badge {quality_class}">{ch['quality']}</span></td>
-                    <td><code>{ch['id']}</code></td>
+                    <td><a href="{ch['watch_url']}" target="_blank" style="color: #ffcc00; font-size: 0.9em;">Play on CignalPlay</a></td>
                 </tr>
         """
     html_content += """

@@ -19,6 +19,14 @@ The "small size" is achieved by offloading all application logic and assets to a
 - **The API Response:** Instead of a complex UI, the "API" on the server side returns the necessary parameters (URL, UI settings, authentication tokens) which the app then uses to render the full experience.
 - **Maintenance:** This allows the developer to change the entire application behavior, content, and even its name without ever requiring the user to update the 232KB APK.
 
+### 3. Video Source Generation and DRM
+Apps like CignalPlay do not expose direct `.m3u8` links in their metadata. Instead, they use a multi-step handshake:
+1. **Authentication:** The app sends a session token or device ID.
+2. **Playback Request:** A specific API (e.g., `playback.api.pldt.firstlight.ai`) is called with the content ID.
+3. **Dynamic Response:** The server returns a **short-lived, signed URL** (often HLS or DASH) and, if necessary, DRM keys (Widevine/FairPlay).
+
+The "Small Size" app acts as a secure gateway for this process, handling the authentication and signed URL renewal in the background, which is why direct video links cannot be easily scraped without a valid session.
+
 ## Ethical and Security Assessment
 
 ### Security Risks
@@ -54,4 +62,4 @@ A Python-based scraper (`CignalScraper.py`) has been developed to:
 4.  Save the data to a structured JSON file (`channels.json`).
 5.  Generate a responsive HTML report (`channels.html`) for easy viewing.
 
-The analysis successfully identified 70 unique live channels currently available on the platform through these API endpoints.
+The analysis successfully identified 70 unique live channels currently available on the platform through these API endpoints. While direct video streams are protected by session-based signing, the platform provides public "Watch" pages for free-tier content.
