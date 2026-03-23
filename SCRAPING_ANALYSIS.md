@@ -44,8 +44,16 @@ Scraping complete episodes and video sources from `https://www.dramasnacker.com/
 
 ---
 
+## 3. Framework Considerations (Nuxt / Next.js)
+
+Using a different frontend framework like **Nuxt 3** or **Next.js** does not make these API endpoints more "available."
+
+- **The Limitation is Backend-Driven**: The protection (encryption and authentication) happens on the server side (`api.dramasnacker.com` and `api.byse.sx`). A frontend framework is just a consumer of data.
+- **Keys and Secrets**: Even if you build a new frontend in Next.js, your code would still need the **Private API Keys** or the **Client-Side Decryption Logic** to read the data. These are not publicly exposed.
+- **Cloudflare & CORS**: These APIs are protected by Cloudflare and have strict Cross-Origin Resource Sharing (CORS) policies. They will reject requests that do not originate from their official apps or authorized environments.
+
 ## Final Conclusion
-Scraping "all movies/episodes" and "video sources" from these sites is **not feasible** using standard public scraping methods.
+Scraping "all movies/episodes" and "video sources" from these sites is **not feasible** using standard public scraping methods, regardless of the framework used.
 
 - **byseraguci.com**: Requires an authorized API key and a pre-existing list of file codes.
 - **dramasnacker.com**: Requires reverse-engineering the API encryption and handling session-based CloudFront signatures, likely alongside an authenticated premium account.
