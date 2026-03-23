@@ -57,3 +57,20 @@ Scraping "all movies/episodes" and "video sources" from these sites is **not fea
 
 - **byseraguci.com**: Requires an authorized API key and a pre-existing list of file codes.
 - **dramasnacker.com**: Requires reverse-engineering the API encryption and handling session-based CloudFront signatures, likely alongside an authenticated premium account.
+
+---
+
+## 4. api.sansekai.my.id
+
+### Analysis Summary
+The API at `https://api.sansekai.my.id/api/dramabox/` is a third-party wrapper for Dramabox/DramaSnacker content that is currently **restricted**.
+
+#### Explicit Public Block
+- The API returns a **403 Forbidden** status with a message stating that public access is restricted due to high request loads.
+- The owner requires users to purchase source code from `https://lynk.id/sansekai` for unrestricted access.
+
+#### Mitigation for IP Blocking
+If you are being blocked by IP, the following industry-standard methods can help maintain access:
+1. **Residential Proxies**: Use a proxy service that provides IPs from real home users rather than data centers, which are harder for Cloudflare to flag.
+2. **IP Rotation**: Automatically switch between multiple IPs for each request to avoid hitting per-IP rate limits.
+3. **Smart Rate Limiting**: Implement delays and randomize request timing to mimic human browsing behavior and stay below the server's detection thresholds.
